@@ -87,11 +87,28 @@ class _InTravelDashboardState extends State<InTravelDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: Colors.black,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        var handled = false;
+        try {
+          final result = await _controller.runJavaScriptReturningResult(
+            'Boolean(window.InTravelApp && window.InTravelApp.goBack && window.InTravelApp.goBack())',
+          );
+          handled = result == true || result.toString() == 'true';
+        } catch (_) {
+          handled = false;
+        }
+        if (!handled) {
+          await SystemNavigator.pop();
+        }
+      },
+      child: ColoredBox(
+        color: Colors.black,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
           SafeArea(
             top: false,
             bottom: false,
@@ -139,7 +156,8 @@ class _InTravelDashboardState extends State<InTravelDashboard> {
                 ),
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }
