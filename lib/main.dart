@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
@@ -40,16 +43,28 @@ class _InTravelDashboardState extends State<InTravelDashboard> {
   late final WebViewController _controller;
   bool _isLoading = true;
   String? _loadError;
+  String? _savedNavigationState;
+  bool _pageFinished = false;
+  bool _stateRestoredForPage = false;
 
   @override
   void initState() {
     super.initState();
+    _loadSavedNavigationState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.black)
+      ..addJavaScriptChannel(
+        'InTravelState',
+        onMessageReceived: (message) {
+          _saveNavigationState(message.message);
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
+            _pageFinished = false;
+            _stateRestoredForPage = false;
             if (mounted) {
               setState(() {
                 _isLoading = true;
@@ -58,6 +73,8 @@ class _InTravelDashboardState extends State<InTravelDashboard> {
             }
           },
           onPageFinished: (_) {
+            _pageFinished = true;
+            _restoreSavedNavigationState();
             if (mounted) {
               setState(() => _isLoading = false);
             }
@@ -85,21 +102,47 @@ class _InTravelDashboardState extends State<InTravelDashboard> {
       ..loadFlutterAsset('assets/intravel/index.html');
   }
 
+  Future<void> _loadSavedNavigationState() async {
+    final preferences = await SharedPreferences.getInstance();
+    _savedNavigationState = preferences.getString('intravel.navigation.v1');
+    _restoreSavedNavigationState();
+  }
+
+  Future<void> _saveNavigationState(String state) async {
+    _savedNavigationState = state;
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString('intravel.navigation.v1', state);
+  }
+
+  Future<bool> _goBackInWebView() async {
+    try {
+      final result = await _controller.runJavaScriptReturningResult(
+        'Boolean(window.InTravelApp && window.InTravelApp.goBack && window.InTravelApp.goBack())',
+      );
+      return result == true || result.toString() == 'true';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _restoreSavedNavigationState() async {
+    if (!_pageFinished || _stateRestoredForPage) return;
+    _stateRestoredForPage = true;
+    final state = _savedNavigationState;
+    final serializedState =
+        state == null || state.isEmpty ? 'null' : jsonEncode(state);
+    await _controller.runJavaScript(
+      'window.InTravelApp && window.InTravelApp.restoreState($serializedState)',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        var handled = false;
-        try {
-          final result = await _controller.runJavaScriptReturningResult(
-            'Boolean(window.InTravelApp && window.InTravelApp.goBack && window.InTravelApp.goBack())',
-          );
-          handled = result == true || result.toString() == 'true';
-        } catch (_) {
-          handled = false;
-        }
+        final handled = await _goBackInWebView();
         if (!handled) {
           await SystemNavigator.pop();
         }
