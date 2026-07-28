@@ -70,7 +70,16 @@ class _InTravelDashboardState extends State<InTravelDashboard> {
               });
             }
           },
-          onNavigationRequest: (request) => NavigationDecision.navigate,
+          onNavigationRequest: (request) {
+            // The dashboard is a bundled, local-first experience. Blocking
+            // arbitrary top-level navigation keeps untrusted pages from
+            // replacing the app inside the WebView.
+            final isBundledAsset = request.url.startsWith('file:');
+            final isBlankPage = request.url == 'about:blank';
+            return isBundledAsset || isBlankPage
+                ? NavigationDecision.navigate
+                : NavigationDecision.prevent;
+          },
         ),
       )
       ..loadFlutterAsset('assets/intravel/index.html');
