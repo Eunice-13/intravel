@@ -33,7 +33,7 @@ class GateService {
       name: 'Puerta Real',
       kind: GateKind.historical,
       imageUrl:
-          'https://upload.wikimedia.org/wikipedia/commons/f/f8/Puerta_Real_Gardens_gate.jpg',
+          'http://wikimapia.org/8334240/Revell%C3%ADn-de-Puerta-Real-de-Bagumbayan',
       coordinates: const LatLng(14.587500, 120.974722),
     ),
 
