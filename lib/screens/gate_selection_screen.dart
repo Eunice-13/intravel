@@ -87,7 +87,7 @@ class GateSelectionScreen extends StatelessWidget {
               Text(
                 isOnboarding
                     ? 'Selecting your gate improves navigation accuracy — we\'ll use it to set your starting point on the map.'
-                    : 'Pick the gate you usually enter from. This sets your starting point on the navigation map.',
+                    : 'Pick the gate you are currently in. This sets your starting point on the navigation map.',
                 style: TextStyle(
                   fontFamily: AppTheme.serifFont,
                   fontSize: 14,
