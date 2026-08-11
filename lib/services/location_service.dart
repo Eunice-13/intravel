@@ -883,12 +883,14 @@ class LocationService {
     ),
     _RawSite(
       id: 'baluarillo-de-san-juan',
+      budgetRange: const BudgetRange(min: 15, max: 40),
       name: 'Baluarillo de San Juan',
       category: 'Fortifications',
       type: 'Fortification',
       note: 'Small bastion on the seafront wall',
       access: 'Free',
-      photo: 'https://intramuros.gov.ph/wp-content/uploads/2022/09/San-Andres-2-1024x559.png',
+      photo:
+          'https://intramuros.gov.ph/wp-content/uploads/2022/09/San-Andres-2-1024x559.png',
       area: 'Seafront Complex, southwestern wall',
       history:
           "Baluarillo de San Juan is a small bastion on the southwestern seafront wall of Intramuros, part of the Seafront Complex that defended the city's coastal edge.",
@@ -908,12 +910,14 @@ class LocationService {
     ),
     _RawSite(
       id: 'baluartillo-de-san-jose',
+      budgetRange: const BudgetRange(min: 15, max: 40),
       name: 'Baluartillo de San Jose',
       category: 'Fortifications',
       type: 'Fortification',
       note: 'Small defensive work on the seafront',
       access: 'Free',
-      photo: 'https://intramuros.gov.ph/wp-content/uploads/2022/09/San-Andres-2-1024x559.png',
+      photo:
+          'https://intramuros.gov.ph/wp-content/uploads/2022/09/San-Andres-2-1024x559.png',
       area: 'Seafront Complex, southwestern wall',
       history:
           'Baluartillo de San Jose is a small defensive work within the Seafront Complex of Intramuros, forming part of the interconnected coastal fortifications south of the walled city.',
@@ -933,12 +937,14 @@ class LocationService {
     ),
     _RawSite(
       id: 'reducto-de-san-pedro',
+      budgetRange: const BudgetRange(min: 15, max: 40),
       name: 'Reducto de San Pedro',
       category: 'Fortifications',
       type: 'Fortification',
       note: 'Compact redoubt on southwestern wall',
       access: 'Free',
-      photo: 'https://intramuros.gov.ph/wp-content/uploads/2022/09/Reducto-Javier-1.png',
+      photo:
+          'https://intramuros.gov.ph/wp-content/uploads/2022/09/Reducto-Javier-1.png',
       area: 'Southwestern wall near Santa Lucia',
       history:
           'Reducto de San Pedro is a compact defensive redoubt on the southwestern wall of Intramuros. It served as an ammunition storage point during the Spanish colonial era and is now a heritage ruin.',
@@ -958,12 +964,14 @@ class LocationService {
     ),
     _RawSite(
       id: 'puerta-del-parian-revellin-del-parian',
+      budgetRange: const BudgetRange(min: 15, max: 40),
       name: 'Puerta del Parian & Revellin del Parian',
       category: 'Fortifications',
       type: 'Fortification',
       note: 'Original 1593 gate and forward defense',
       access: 'Free',
-      photo: 'https://commons.wikimedia.org/wiki/Special:FilePath/03748jfBaluarte_de_Dilao_Puerta_del_Parian_Revellin_Buildings_Intramurosfvf_19.jpg?width=800',
+      photo:
+          'https://commons.wikimedia.org/wiki/Special:FilePath/03748jfBaluarte_de_Dilao_Puerta_del_Parian_Revellin_Buildings_Intramurosfvf_19.jpg?width=800',
       area: 'Eastern wall of Intramuros',
       history:
           'Puerta del Parian is one of the original gates of Intramuros, built in 1593 and named after the Parian market of Chinese merchants. The attached Revellin del Parian provided forward defense. The gate was restored between 1967 and 1982.',
@@ -975,16 +983,22 @@ class LocationService {
       visitNote:
           'Free exterior access. The gate area may be affected by nearby road traffic; exercise care.',
       coordinates: const LatLng(14.5920, 120.9787),
-      relatedPlaceIds: ['asean-gardens', 'galleria-de-los-presidentes', 'fort-santiago'],
+      relatedPlaceIds: [
+        'asean-gardens',
+        'galleria-de-los-presidentes',
+        'fort-santiago',
+      ],
     ),
     _RawSite(
       id: 'puerta-isabel-ii',
+      budgetRange: const BudgetRange(min: 15, max: 40),
       name: 'Puerta Isabel II',
       category: 'Fortifications',
       type: 'Fortification',
       note: 'Last gate built in Intramuros (1861)',
       access: 'Free',
-      photo: 'https://commons.wikimedia.org/wiki/Special:FilePath/Intramurosjf9916_06.JPG?width=800',
+      photo:
+          'https://commons.wikimedia.org/wiki/Special:FilePath/Intramurosjf9916_06.JPG?width=800',
       area: 'Northern wall facing Binondo',
       history:
           'Puerta Isabel II was the last gate built in Intramuros, opened in 1861 to relieve heavy pedestrian traffic outside the Parian Gate heading toward the Bridge of Spain and Binondo. A statue of Queen Isabel II stands in front. Damaged in 1945, it was restored in 1966.',
@@ -1004,6 +1018,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'foro-de-intramuros',
+      budgetRange: const BudgetRange(min: 30, max: 100),
       name: 'Foro de Intramuros',
       category: 'Landmarks',
       type: 'Cultural venue',
@@ -1029,6 +1044,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'fr-george-willman-museum',
+      budgetRange: const BudgetRange(min: 50, max: 100),
       name: 'Fr. George Willman Museum',
       category: 'Landmarks',
       type: 'Museum',
@@ -1054,6 +1070,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'ncca-gallery',
+      budgetRange: const BudgetRange(min: 15, max: 50),
       name: 'NCCA Gallery',
       category: 'Landmarks',
       type: 'Gallery',
@@ -1079,6 +1096,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'bagumbayan-light-and-sound-museum',
+      budgetRange: const BudgetRange(min: 100, max: 180),
       name: 'Bagumbayan Light and Sound Museum',
       category: 'Landmarks',
       type: 'Museum',
@@ -1104,6 +1122,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'chamber-of-commerce',
+      budgetRange: const BudgetRange(min: 15, max: 50),
       name: 'Chamber of Commerce',
       category: 'Landmarks',
       type: 'Historic site',
@@ -1129,6 +1148,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'aduana-intendencia',
+      budgetRange: const BudgetRange(min: 15, max: 50),
       name: 'Aduana (Intendencia)',
       category: 'Landmarks',
       type: 'Historic site',
@@ -1154,6 +1174,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'plaza-de-santo-tomas',
+      budgetRange: const BudgetRange(min: 15, max: 50),
       name: 'Plaza de Santo Tomas',
       category: 'Parks',
       type: 'Historic plaza',
@@ -1171,10 +1192,15 @@ class LocationService {
       visitNote:
           'Free public open space. Open at all times; exercise normal pedestrian care.',
       coordinates: const LatLng(14.5929, 120.9745),
-      relatedPlaceIds: ['plaza-roma', 'manila-cathedral', 'ayuntamiento-de-manila'],
+      relatedPlaceIds: [
+        'plaza-roma',
+        'manila-cathedral',
+        'ayuntamiento-de-manila',
+      ],
     ),
     _RawSite(
       id: 'plaza-espana',
+      budgetRange: const BudgetRange(min: 15, max: 50),
       name: 'Plaza España',
       category: 'Parks',
       type: 'Public square',
@@ -1200,6 +1226,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'manila-high-school',
+      budgetRange: const BudgetRange(min: 0, max: 20),
       name: 'Manila High School',
       category: 'Schools',
       type: 'Public school',
@@ -1225,6 +1252,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'lyceum-of-the-philippines-university',
+      budgetRange: const BudgetRange(min: 0, max: 20),
       name: 'Lyceum of the Philippines University',
       category: 'Schools',
       type: 'University',
@@ -2116,7 +2144,8 @@ class LocationService {
         authorName: 'Yuki Tanaka',
         authorPhotoUrl: '',
         rating: 4.0,
-        text: 'Small but atmospheric. A quiet corner of Intramuros most tourists miss.',
+        text:
+            'Small but atmospheric. A quiet corner of Intramuros most tourists miss.',
         relativeTime: '3 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 21)),
       ),
@@ -2167,7 +2196,8 @@ class LocationService {
         authorName: 'Jake Morrison',
         authorPhotoUrl: '',
         rating: 4.0,
-        text: 'An underrated fortification. Quiet, scenic, and surprisingly intact.',
+        text:
+            'An underrated fortification. Quiet, scenic, and surprisingly intact.',
         relativeTime: '5 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 35)),
       ),
@@ -2188,7 +2218,8 @@ class LocationService {
         authorName: 'Sarah Winters',
         authorPhotoUrl: '',
         rating: 5.0,
-        text: 'A hidden gem on the southwestern wall. The heritage ruin has real atmosphere.',
+        text:
+            'A hidden gem on the southwestern wall. The heritage ruin has real atmosphere.',
         relativeTime: '3 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 21)),
       ),
@@ -2197,7 +2228,8 @@ class LocationService {
         authorName: 'Jun Park',
         authorPhotoUrl: '',
         rating: 4.0,
-        text: 'Interesting stop for anyone studying colonial-era military architecture.',
+        text:
+            'Interesting stop for anyone studying colonial-era military architecture.',
         relativeTime: '6 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 42)),
       ),
@@ -2280,7 +2312,8 @@ class LocationService {
         authorName: 'Raj Patel',
         authorPhotoUrl: '',
         rating: 4.0,
-        text: 'The Isabel II monument adds a regal touch to an already impressive gateway.',
+        text:
+            'The Isabel II monument adds a regal touch to an already impressive gateway.',
         relativeTime: '6 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 42)),
       ),
@@ -2375,7 +2408,8 @@ class LocationService {
         authorName: 'Jessa Villanueva',
         authorPhotoUrl: '',
         rating: 5.0,
-        text: 'Since 2009 this gallery has championed new voices in Filipino art. Proud of our NCCA.',
+        text:
+            'Since 2009 this gallery has championed new voices in Filipino art. Proud of our NCCA.',
         relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
@@ -2576,7 +2610,8 @@ class LocationService {
         authorName: 'Eric Johnson',
         authorPhotoUrl: '',
         rating: 4.0,
-        text: 'Unique to see a working public school within the fortified walls of old Manila.',
+        text:
+            'Unique to see a working public school within the fortified walls of old Manila.',
         relativeTime: '3 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 21)),
       ),
