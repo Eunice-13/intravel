@@ -23,6 +23,18 @@ class PlanBudgetFilter {
     if (max != null && price > max!) return false;
     return true;
   }
+
+  /// Whether a site/route with the given displayed price range (e.g. the
+  /// "₱50–₱100" shown on its card) should be visible under this filter.
+  /// The entire displayed range must fall within [min, max] — a site whose
+  /// range only partially overlaps the filter (e.g. its max exceeds the
+  /// filter's max) is excluded, since part of what's shown to the user
+  /// would be outside the budget they asked for.
+  bool allowsRange(double rangeMin, double rangeMax) {
+    if (min != null && rangeMin < min!) return false;
+    if (max != null && rangeMax > max!) return false;
+    return true;
+  }
 }
 
 /// Opens the detailed budget-range filter sheet (addendum spec 3.1): an
@@ -49,123 +61,161 @@ Future<PlanBudgetFilter?> showBudgetFilterSheet(
       borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
     ),
     builder: (sheetContext) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      return StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          String? errorText;
+
+          void handleApply() {
+            final min = double.tryParse(minController.text.trim());
+            final max = double.tryParse(maxController.text.trim());
+            // Validation (addendum spec 3.1): the max budget must be
+            // greater than the min budget when both are set, otherwise the
+            // range would be empty or inverted.
+            if (min != null && max != null && max <= min) {
+              setSheetState(() {
+                errorText = 'Max budget must be greater than min budget.';
+              });
+              return;
+            }
+            Navigator.of(sheetContext).pop(
+              PlanBudgetFilter(
+                min: min != null && min >= 0 ? min : null,
+                max: max != null && max >= 0 ? max : null,
+              ),
+            );
+          }
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 22, 24, 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Budget filter',
+                        style: TextStyle(
+                          fontFamily: AppTheme.serifFont,
+                          fontSize: 22,
+                          color: colors.ink,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.of(sheetContext).pop(),
+                        child: Text(
+                          '×',
+                          style: TextStyle(fontSize: 28, color: colors.muted),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
                   Text(
-                    'Budget filter',
-                    style: TextStyle(
-                      fontFamily: AppTheme.serifFont,
-                      fontSize: 22,
-                      color: colors.ink,
-                    ),
+                    'Set a min–max range to filter sites, itineraries, and '
+                    'curated routes by estimated cost per person.',
+                    style: TextStyle(color: colors.muted, fontSize: 12),
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.of(sheetContext).pop(),
-                    child: Text(
-                      '×',
-                      style: TextStyle(fontSize: 28, color: colors.muted),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Set a min–max range to filter sites, itineraries, and '
-                'curated routes by estimated cost per person.',
-                style: TextStyle(color: colors.muted, fontSize: 12),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: _RangeField(
-                      colors: colors,
-                      label: 'MIN',
-                      controller: minController,
-                      hint: '₱0',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _RangeField(
-                      colors: colors,
-                      label: 'MAX',
-                      controller: maxController,
-                      hint: 'Any',
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 22),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(
-                        sheetContext,
-                      ).pop(PlanBudgetFilter.none),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: colors.ink,
-                        backgroundColor: colors.card,
-                        side: BorderSide(color: colors.line),
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _RangeField(
+                          colors: colors,
+                          label: 'MIN',
+                          controller: minController,
+                          hint: '₱0',
+                          onChanged: (_) {
+                            if (errorText != null) {
+                              setSheetState(() => errorText = null);
+                            }
+                          },
                         ),
                       ),
-                      child: const Text(
-                        'Clear',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _RangeField(
+                          colors: colors,
+                          label: 'MAX',
+                          controller: maxController,
+                          hint: 'Any',
+                          onChanged: (_) {
+                            if (errorText != null) {
+                              setSheetState(() => errorText = null);
+                            }
+                          },
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        final min = double.tryParse(minController.text.trim());
-                        final max = double.tryParse(maxController.text.trim());
-                        Navigator.of(sheetContext).pop(
-                          PlanBudgetFilter(
-                            min: min != null && min >= 0 ? min : null,
-                            max: max != null && max >= 0 ? max : null,
+                  if (errorText != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      errorText!,
+                      style: const TextStyle(
+                        color: Color(0xFFC0392B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.of(
+                            sheetContext,
+                          ).pop(PlanBudgetFilter.none),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: colors.ink,
+                            backgroundColor: colors.card,
+                            side: BorderSide(color: colors.line),
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
                           ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: colors.forest,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size.fromHeight(50),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Apply',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: handleApply,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: colors.forest,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size.fromHeight(50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: const Text(
+                            'Apply',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       );
     },
   );
@@ -176,12 +226,14 @@ class _RangeField extends StatelessWidget {
   final String label;
   final TextEditingController controller;
   final String hint;
+  final ValueChanged<String>? onChanged;
 
   const _RangeField({
     required this.colors,
     required this.label,
     required this.controller,
     required this.hint,
+    this.onChanged,
   });
 
   @override
@@ -209,6 +261,7 @@ class _RangeField extends StatelessWidget {
             controller: controller,
             keyboardType: TextInputType.number,
             style: TextStyle(fontSize: 16, color: colors.ink),
+            onChanged: onChanged,
             decoration: InputDecoration(
               isDense: true,
               border: InputBorder.none,

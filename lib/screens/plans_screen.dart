@@ -45,6 +45,7 @@ class _PlansScreenState extends State<PlansScreen> {
   /// header icon read from and write to this same state.
   PlanBudgetFilter _budgetFilter = PlanBudgetFilter.none;
   final TextEditingController _budgetBarController = TextEditingController();
+  String? _budgetBarError;
 
   @override
   void dispose() {
@@ -96,19 +97,20 @@ class _PlansScreenState extends State<PlansScreen> {
   bool _siteWithinBudget(LocationModel site) {
     if (!_budgetFilter.isActive) return true;
     final cost = _scaledSiteCost(site);
-    return _budgetFilter.allowsPrice(cost.min);
+    return _budgetFilter.allowsRange(cost.min, cost.max);
   }
 
   bool _routeWithinBudget(CuratedRoute route) {
     if (!_budgetFilter.isActive) return true;
     final cost = _scaledRouteCost(route);
     if (cost == null) return true;
-    return _budgetFilter.allowsPrice(cost.min);
+    return _budgetFilter.allowsRange(cost.min, cost.max);
   }
 
   void _applyBudgetFilter(PlanBudgetFilter next, {bool fromSheet = false}) {
     setState(() {
       _budgetFilter = next;
+      _budgetBarError = null;
       if (!fromSheet) {
         // Bottom-bar edits only ever set an upper bound, mirroring the
         // single "Type your total budget..." field's intent.
@@ -187,7 +189,7 @@ class _PlansScreenState extends State<PlansScreen> {
                       decoration: BoxDecoration(
                         color: _budgetFilter.isActive
                             ? colors.forest
-                            : const Color(0xFFEEE8DF),
+                            : colors.card,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -376,55 +378,70 @@ class _PlansScreenState extends State<PlansScreen> {
               // Shared with the detailed filter sheet opened from the
               // header icon above: editing either updates the other, and
               // both filter the curated routes and site list live.
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEDE7DC),
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _budgetBarController,
-                        keyboardType: TextInputType.number,
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEDE7DC),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _budgetBarController,
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: const Color(0xFF65746C),
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            border: InputBorder.none,
+                            hintText: '₱ Type your total budget…',
+                            errorText: _budgetBarError,
+                          ),
+                          onChanged: (v) {
+                            final trimmed = v.trim();
+                            final parsed = double.tryParse(trimmed);
+                            final nextMax = trimmed.isEmpty
+                                ? null
+                                : (parsed != null && parsed >= 0
+                                      ? parsed
+                                      : _budgetFilter.max);
+                            // Validation (addendum spec 3.1): the max
+                            // budget must be greater than the min budget
+                            // set via the detailed filter sheet.
+                            if (nextMax != null &&
+                                _budgetFilter.min != null &&
+                                nextMax <= _budgetFilter.min!) {
+                              setState(() {
+                                _budgetBarError =
+                                    'Max must be greater than min (₱${_budgetFilter.min!.round()}).';
+                              });
+                              return;
+                            }
+                            _applyBudgetFilter(
+                              PlanBudgetFilter(
+                                min: _budgetFilter.min,
+                                max: nextMax,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      Text(
+                        'Est. total\n${_formatEstimatedTotal(sites)}',
+                        textAlign: TextAlign.right,
                         style: TextStyle(
-                          fontSize: 13,
-                          color: const Color(0xFF65746C),
+                          color: const Color(0xFF6E8178),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
                         ),
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          hintText: '₱ Type your total budget…',
-                        ),
-                        onChanged: (v) {
-                          final trimmed = v.trim();
-                          final parsed = double.tryParse(trimmed);
-                          _applyBudgetFilter(
-                            PlanBudgetFilter(
-                              max: trimmed.isEmpty
-                                  ? null
-                                  : (parsed != null && parsed >= 0
-                                        ? parsed
-                                        : _budgetFilter.max),
-                            ),
-                          );
-                        },
                       ),
-                    ),
-                    Text(
-                      'Est. total\n${_formatEstimatedTotal(sites)}',
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: const Color(0xFF6E8178),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
               const SizedBox(height: 18),
 
               // ─── All Tourist Sites ─────────────────────────────────────
