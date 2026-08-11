@@ -1,7 +1,7 @@
 # Intramuros App — New Updates Spec (for Kiro AI)
 
 ## Context
-This is a **standalone addendum** covering only the latest round of requested changes. It assumes the base app and the earlier full spec (`intramuros-app-spec.md`) are already in place — read that file first for context on pages, components, and prior decisions (gate selection, nav page filters, itinerary structure, etc.) before implementing anything here, since several items below extend those existing features.
+This is a **standalone addendum** covering only the latest round of requested changes. It assumes the base app and the earlier full spec (`intramuros-app-spec-for-kiro.md`) are already in place — read that file first for context on pages, components, and prior decisions (gate selection, nav page filters, itinerary structure, etc.) before implementing anything here, since several items below extend those existing features.
 
 **Design constraint (same as base spec):** Reuse existing components, color tokens, spacing, and typography. No new design language. Match the existing design system for any new UI state.
 
