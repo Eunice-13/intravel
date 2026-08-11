@@ -55,8 +55,8 @@ Do not build three separate implementations — this should be one shared naviga
 Reference: uploaded screenshot "4.0 - ITINERARY PAGE GROUP SIZE" shows the intended layout — "Travel Your Way" header with a filter icon top-right, group-size selector row (Solo/Couple/Group/Large), category chips (All Sites/Fortification/Landmarks/etc.), a "Curated Routes" list, and a budget input pinned above the bottom nav showing an "Est. total."
 
 ### 3.1 Budget filter (icon-triggered, not a permanent header display)
-- The icon in the upper-right of the Plans page header (currently shown as a sliders/filter icon in the reference screenshot) opens the **budget filter** — the user enters a budget range there. This replaces the earlier idea of a permanent "total budget" display sitting where the logo is; instead, the logo stays where it is and the filter icon opens budget entry on tap.
-- The **bottom budget bar** (the "Type your total budget..." input pinned above the bottom nav, with "Est. total" shown alongside) is a separate, always-visible budget control — confirm with the reference screenshot that both this bottom bar AND the header filter icon coexist, or whether the header icon is the only entry point and the bottom bar is simply the persistent summary of whatever was entered. Build to match the screenshot: bottom bar always visible for quick input, header icon available as an additional/alternate way to open a more detailed budget range filter if one is needed.
+- The icon in the upper-right of the Plans page header (currently shown as a sliders/filter icon in the reference screenshot) opens a **more detailed budget range filter** (e.g., min–max range, possibly combined with other filter controls) — this is an additional/alternate entry point for finer control. This replaces the earlier idea of a permanent "total budget" display sitting where the logo is; the logo stays where it is, and the icon simply opens this detailed filter on tap.
+- The **bottom budget bar** (the "Type your total budget..." input pinned above the bottom nav, with "Est. total" shown alongside) is **always visible** and serves as the quick, primary way to enter a budget — the user shouldn't need to open the header filter just to filter by budget. Both controls should read from and write to the same underlying budget filter state, so entering a value in one is reflected in the other (e.g., using the detailed range filter updates what's shown/implied by the bottom bar, and vice versa).
 
 ### 3.2 Group size selector
 - Add a **group size selector** row: Solo / Couple / Group / Large (single-select, matching the reference screenshot's pill styling — selected state filled dark green).
@@ -142,7 +142,7 @@ Reference: uploaded screenshot "4.0 - ITINERARY PAGE GROUP SIZE" shows the inten
 - New user-submitted reviews append to that location's existing review list (which may already include seeded/generated reviews from the base spec) — don't replace or separate them into a different section.
 
 ### 7.3 Location photos in reviews
-- Each location's review section should display a **photo of the place**, sourced the same way as other location photos in this app (manually searched/curated static image, not a live API pull) — see Section 5's note on reusing one consistent image per location.
+- Each location's review section should display some **photo of the place**, sourced the same way as other location photos in this app (manually searched/curated static image, not a live API pull) — see Section 5's note on reusing one consistent image per location.
 
 ---
 
