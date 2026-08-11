@@ -18,8 +18,11 @@ class RouteService {
         duration: '~4 hrs',
         category: 'Churches',
         addToBudget: 500,
+<<<<<<< HEAD
         qualifyingCategories: ['Churches'],
         hours: 4,
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
       ),
       CuratedRoute(
         id: 'military-defense',
@@ -30,8 +33,11 @@ class RouteService {
         duration: '~3 hrs',
         category: 'Fortifications',
         addToBudget: 150,
+<<<<<<< HEAD
         qualifyingCategories: ['Fortifications'],
         hours: 3,
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
       ),
       CuratedRoute(
         id: 'students-budget',
@@ -42,9 +48,12 @@ class RouteService {
         duration: '~2.5 hrs',
         category: 'Landmarks',
         addToBudget: 100,
+<<<<<<< HEAD
         qualifyingCategories: ['Landmarks', 'Parks'],
         hours: 2.5,
         maxPerPersonBudget: 100,
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
       ),
       CuratedRoute(
         id: 'plazas-open',
@@ -55,8 +64,11 @@ class RouteService {
         duration: '~2 hrs',
         category: 'Parks',
         addToBudget: 0,
+<<<<<<< HEAD
         qualifyingCategories: ['Parks'],
         hours: 2,
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
       ),
     ];
   }

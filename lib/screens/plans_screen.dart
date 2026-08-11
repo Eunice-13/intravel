@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/route_service.dart';
 import '../services/location_service.dart';
+<<<<<<< HEAD
 import '../services/itinerary_service.dart';
 import '../models/route_model.dart';
 import '../models/location_model.dart';
@@ -18,6 +19,17 @@ import 'route_plan_options_screen.dart';
 /// system-generated set of plan options to save into the Itinerary Hub,
 /// a budget bar shared with the detailed filter sheet, and the full "All
 /// tourist sites" directory list.
+=======
+import '../models/route_model.dart';
+import '../models/location_model.dart';
+import 'location_details_screen.dart';
+import 'itinerary_create_screen.dart';
+
+/// Plans screen, ported from the Eunice-branch `#screen-plans` markup:
+/// eyebrow header + filter icon, traveler-size row with contextual hints,
+/// plan-category chips, curated routes that accumulate a running budget on
+/// tap, and the full "All tourist sites" directory list.
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
 class PlansScreen extends StatefulWidget {
   const PlansScreen({super.key});
 
@@ -28,6 +40,7 @@ class PlansScreen extends StatefulWidget {
 class _PlansScreenState extends State<PlansScreen> {
   String _selectedTraveler = 'Solo';
   String _planFilter = 'all';
+<<<<<<< HEAD
 
   /// Group-size cost multipliers (addendum spec 3.2): selecting a group
   /// size never filters which sites/routes are visible — it only scales
@@ -50,6 +63,21 @@ class _PlansScreenState extends State<PlansScreen> {
   @override
   void dispose() {
     _budgetBarController.dispose();
+=======
+  int _estimatedTotal = 50;
+
+  /// Max entrance fee (per adult) a user is willing to pay, entered in the
+  /// dedicated "Filter by budget" field above the site list (spec 3.2).
+  /// `null` means no filter is applied. This is intentionally separate from
+  /// [_estimatedTotal] above, which only tracks a running total from tapping
+  /// curated routes and never filters the site list.
+  int? _maxBudgetFilter;
+  final TextEditingController _budgetFilterController = TextEditingController();
+
+  @override
+  void dispose() {
+    _budgetFilterController.dispose();
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     super.dispose();
   }
 
@@ -67,6 +95,7 @@ class _PlansScreenState extends State<PlansScreen> {
     {'key': 'Museums', 'label': 'Museums'},
     {'key': 'Churches', 'label': 'Churches'},
     {'key': 'Parks', 'label': 'Parks'},
+<<<<<<< HEAD
     {'key': 'Schools', 'label': 'Schools'},
   ];
 
@@ -134,12 +163,24 @@ class _PlansScreenState extends State<PlansScreen> {
   Future<void> _openRoutePlanOptions(CuratedRoute route) async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => RoutePlanOptionsScreen(route: route)),
+=======
+  ];
+
+  void _addRouteToBudget(CuratedRoute route) {
+    setState(() => _estimatedTotal += route.addToBudget);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${route.name} added'),
+        duration: const Duration(seconds: 1),
+      ),
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
+<<<<<<< HEAD
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final budgetFieldColor = isDark
         ? const Color(0xFF6E8178)
@@ -149,6 +190,15 @@ class _PlansScreenState extends State<PlansScreen> {
     final sites = LocationService().getAllLocations().where((s) {
       final matchesCategory = _planFilter == 'all' || s.category == _planFilter;
       return matchesCategory && _siteWithinBudget(s);
+=======
+    final routes = RouteService().getRoutesByCategory(_planFilter);
+    final sites = LocationService().getAllLocations().where((s) {
+      final matchesCategory = _planFilter == 'all' || s.category == _planFilter;
+      final matchesBudget =
+          _maxBudgetFilter == null ||
+          s.ticketInfo.adultPrice <= _maxBudgetFilter!;
+      return matchesCategory && matchesBudget;
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     }).toList();
 
     return Scaffold(
@@ -167,7 +217,11 @@ class _PlansScreenState extends State<PlansScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
+<<<<<<< HEAD
                         '— ITINERARY PLANNER',
+=======
+                        '— INTRAMUROS',
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                         style: TextStyle(
                           color: colors.accent,
                           fontSize: 12,
@@ -176,7 +230,11 @@ class _PlansScreenState extends State<PlansScreen> {
                       ),
                       const SizedBox(height: 7),
                       Text(
+<<<<<<< HEAD
                         'Plan Your Way',
+=======
+                        'Travel Your Way',
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                         style: TextStyle(
                           fontFamily: AppTheme.serifFont,
                           fontSize: 27,
@@ -186,6 +244,7 @@ class _PlansScreenState extends State<PlansScreen> {
                       ),
                     ],
                   ),
+<<<<<<< HEAD
                   GestureDetector(
                     onTap: _openBudgetSheet,
                     child: Container(
@@ -204,6 +263,19 @@ class _PlansScreenState extends State<PlansScreen> {
                             : colors.ink,
                         size: 22,
                       ),
+=======
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEEE8DF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.tune_rounded,
+                      color: colors.ink,
+                      size: 22,
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                     ),
                   ),
                 ],
@@ -226,7 +298,13 @@ class _PlansScreenState extends State<PlansScreen> {
                           height: 70,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
+<<<<<<< HEAD
                             color: isActive ? colors.forest : colors.card,
+=======
+                            color: isActive
+                                ? colors.forest
+                                : const Color(0xFFEDE7DC),
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                             borderRadius: BorderRadius.circular(22),
                           ),
                           child: Text(
@@ -262,8 +340,12 @@ class _PlansScreenState extends State<PlansScreen> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: _planChips.length,
+<<<<<<< HEAD
                   separatorBuilder: (context, index) =>
                       const SizedBox(width: 12),
+=======
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                   itemBuilder: (context, index) {
                     final chip = _planChips[index];
                     final isActive = chip['key'] == _planFilter;
@@ -274,9 +356,13 @@ class _PlansScreenState extends State<PlansScreen> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isActive
+<<<<<<< HEAD
                               ? (Theme.of(context).brightness == Brightness.dark
                                     ? colors.accent
                                     : const Color(0xFF1D7654))
+=======
+                              ? const Color(0xFF1D7654)
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                               : colors.card,
                           borderRadius: BorderRadius.circular(24),
                         ),
@@ -349,7 +435,11 @@ class _PlansScreenState extends State<PlansScreen> {
               ),
               const SizedBox(height: 20),
 
+<<<<<<< HEAD
               // ─── Curated Routes (spec 3.4) ─────────────────────────────
+=======
+              // ─── Curated Routes ────────────────────────────────────────
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
               Text(
                 'CURATED ROUTES',
                 style: TextStyle(
@@ -359,6 +449,7 @@ class _PlansScreenState extends State<PlansScreen> {
                 ),
               ),
               const SizedBox(height: 11),
+<<<<<<< HEAD
               if (routes.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -386,6 +477,22 @@ class _PlansScreenState extends State<PlansScreen> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: isDark ? colors.card : const Color(0xFFEDE7DC),
+=======
+              ...routes.map(
+                (route) => _RouteCard(
+                  colors: colors,
+                  route: route,
+                  onTap: () => _addRouteToBudget(route),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // ─── Budget ────────────────────────────────────────────────
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEDE7DC),
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
@@ -393,6 +500,7 @@ class _PlansScreenState extends State<PlansScreen> {
                   children: [
                     Expanded(
                       child: TextField(
+<<<<<<< HEAD
                         controller: _budgetBarController,
                         keyboardType: TextInputType.number,
                         style: TextStyle(fontSize: 13, color: budgetFieldColor),
@@ -434,6 +542,26 @@ class _PlansScreenState extends State<PlansScreen> {
                     ),
                     Text(
                       'Est. total\n${_formatEstimatedTotal(sites)}',
+=======
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: const Color(0xFF65746C),
+                        ),
+                        decoration: const InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          hintText: '₱ Type your total budget…',
+                        ),
+                        onChanged: (v) => setState(
+                          () => _estimatedTotal =
+                              int.tryParse(v) ?? _estimatedTotal,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      'Est. total\n₱$_estimatedTotal',
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                       textAlign: TextAlign.right,
                       style: TextStyle(
                         color: const Color(0xFF6E8178),
@@ -444,9 +572,93 @@ class _PlansScreenState extends State<PlansScreen> {
                   ],
                 ),
               ),
+<<<<<<< HEAD
               const SizedBox(height: 18),
 
               // ─── All Tourist Sites ─────────────────────────────────────
+=======
+              const SizedBox(height: 6),
+
+              // ─── Budget Filter (spec 3.2) ──────────────────────────────
+              // Distinct from the curated-route budget tracker above: this
+              // one actually filters "All tourist sites" below to only
+              // locations whose adult entrance fee is ≤ the entered amount.
+              const SizedBox(height: 18),
+              Text(
+                'FILTER BY BUDGET',
+                style: TextStyle(
+                  color: const Color(0xFF6E8178),
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 11),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.card,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: colors.line),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.payments_outlined,
+                      size: 18,
+                      color: colors.forest,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _budgetFilterController,
+                        keyboardType: TextInputType.number,
+                        style: TextStyle(fontSize: 14, color: colors.ink),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          hintText: '₱ Max entrance fee per site…',
+                          hintStyle: TextStyle(
+                            fontSize: 13,
+                            color: colors.muted,
+                          ),
+                        ),
+                        onChanged: (v) => setState(
+                          () => _maxBudgetFilter = v.trim().isEmpty
+                              ? null
+                              : int.tryParse(v.trim()),
+                        ),
+                      ),
+                    ),
+                    if (_maxBudgetFilter != null)
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          _budgetFilterController.clear();
+                          _maxBudgetFilter = null;
+                        }),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: colors.muted,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              if (_maxBudgetFilter != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, left: 4),
+                  child: Text(
+                    'Showing sites with entrance fees of ₱$_maxBudgetFilter or less (free sites always included).',
+                    style: TextStyle(fontSize: 11, color: colors.muted),
+                  ),
+                ),
+
+              // ─── All Tourist Sites ─────────────────────────────────────
+              const SizedBox(height: 18),
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -483,11 +695,15 @@ class _PlansScreenState extends State<PlansScreen> {
                 )
               else
                 ...sites.map(
+<<<<<<< HEAD
                   (site) => _SiteListCard(
                     colors: colors,
                     site: site,
                     scaledCost: _scaledSiteCost(site),
                   ),
+=======
+                  (site) => _SiteListCard(colors: colors, site: site),
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                 ),
             ],
           ),
@@ -495,6 +711,7 @@ class _PlansScreenState extends State<PlansScreen> {
       ),
     );
   }
+<<<<<<< HEAD
 
   String _formatEstimatedTotal(List<LocationModel> visibleSites) {
     if (visibleSites.isEmpty) return '₱0';
@@ -506,6 +723,8 @@ class _PlansScreenState extends State<PlansScreen> {
         visibleSites.length;
     return '₱${total.round()}';
   }
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
 }
 
 // ─── Route Card ─────────────────────────────────────────────────────────────────
@@ -513,23 +732,32 @@ class _PlansScreenState extends State<PlansScreen> {
 class _RouteCard extends StatelessWidget {
   final AppColors colors;
   final CuratedRoute route;
+<<<<<<< HEAD
   final ({double min, double max})? scaledCost;
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
   final VoidCallback onTap;
 
   const _RouteCard({
     required this.colors,
     required this.route,
+<<<<<<< HEAD
     required this.scaledCost,
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     final priceLabel = scaledCost == null
         ? route.priceRange
         : (scaledCost!.min == 0
               ? 'Free–₱${scaledCost!.max.round()}'
               : '₱${scaledCost!.min.round()}–₱${scaledCost!.max.round()}');
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -573,7 +801,11 @@ class _RouteCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
+<<<<<<< HEAD
                   priceLabel,
+=======
+                  route.priceRange,
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                   style: TextStyle(color: colors.accent, fontSize: 14),
                 ),
                 const SizedBox(height: 4),
@@ -598,6 +830,7 @@ class _RouteCard extends StatelessWidget {
 class _SiteListCard extends StatelessWidget {
   final AppColors colors;
   final LocationModel site;
+<<<<<<< HEAD
   final ({double min, double max}) scaledCost;
 
   const _SiteListCard({
@@ -605,6 +838,10 @@ class _SiteListCard extends StatelessWidget {
     required this.site,
     required this.scaledCost,
   });
+=======
+
+  const _SiteListCard({required this.colors, required this.site});
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
 
   ImageProvider _resolveImage() {
     return site.imageUrl.startsWith('http')
@@ -614,9 +851,12 @@ class _SiteListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     final costLabel = scaledCost.min == scaledCost.max
         ? '₱${scaledCost.min.round()}'
         : '₱${scaledCost.min.round()}–₱${scaledCost.max.round()}';
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -698,7 +938,13 @@ class _SiteListCard extends StatelessWidget {
                 child: Align(
                   alignment: Alignment.bottomRight,
                   child: Text(
+<<<<<<< HEAD
                     costLabel,
+=======
+                    site.ticketInfo.adultPrice == 0
+                        ? (site.ticketInfo.notes ?? 'Free')
+                        : site.ticketInfo.formattedAdult,
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                     textAlign: TextAlign.right,
                     style: const TextStyle(
                       color: Color(0xFFB3550E),

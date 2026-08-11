@@ -84,6 +84,7 @@ class _ItineraryCreateScreenState extends State<ItineraryCreateScreen> {
                           ),
                         ),
                       ),
+<<<<<<< HEAD
                       const SizedBox(width: 20),
                       Padding(
                         padding: const EdgeInsets.only(
@@ -112,6 +113,30 @@ class _ItineraryCreateScreenState extends State<ItineraryCreateScreen> {
                             ),
                           ],
                         ),
+=======
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '— NEW ITINERARY',
+                            style: TextStyle(
+                              color: colors.accent,
+                              fontSize: 12,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Build Your Trip',
+                            style: TextStyle(
+                              fontFamily: AppTheme.serifFont,
+                              fontSize: 27,
+                              color: colors.ink,
+                            ),
+                          ),
+                        ],
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                       ),
                     ],
                   ),
@@ -134,7 +159,10 @@ class _ItineraryCreateScreenState extends State<ItineraryCreateScreen> {
                         border: InputBorder.none,
                         hintText: 'Name your itinerary (e.g. "My Day 1")',
                         hintStyle: TextStyle(fontSize: 14, color: colors.muted),
+<<<<<<< HEAD
                         contentPadding: const EdgeInsets.only(top: 15),
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                       ),
                     ),
                   ),

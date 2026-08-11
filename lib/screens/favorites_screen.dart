@@ -66,6 +66,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
+<<<<<<< HEAD
                       Padding(
                         // Adjust this value (e.g., 120-200) depending on how far right you want it
                         padding: const EdgeInsets.only(left: 160),
@@ -91,6 +92,29 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                             ),
                           ],
                         ),
+=======
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '— SAVED',
+                            style: TextStyle(
+                              color: colors.accent,
+                              fontSize: 12,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Your Hub',
+                            style: TextStyle(
+                              fontFamily: AppTheme.serifFont,
+                              fontSize: 27,
+                              color: colors.ink,
+                            ),
+                          ),
+                        ],
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                       ),
                     ],
                   ),

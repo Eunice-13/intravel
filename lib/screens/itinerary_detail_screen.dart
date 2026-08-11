@@ -258,7 +258,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                                   itinerary.name,
                                   style: TextStyle(
                                     fontFamily: AppTheme.serifFont,
+<<<<<<< HEAD
                                     fontSize: 20,
+=======
+                                    fontSize: 24,
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                                     color: colors.ink,
                                   ),
                                   maxLines: 1,
@@ -423,7 +427,11 @@ class _ItineraryDetailScreenState extends State<ItineraryDetailScreen> {
                           ),
                         ],
                       ),
+<<<<<<< HEAD
                       const SizedBox(height: 15),
+=======
+                      const SizedBox(height: 8),
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                     ],
                   ),
                 ),

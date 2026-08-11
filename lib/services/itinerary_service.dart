@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/itinerary_model.dart';
 import '../models/location_model.dart';
+<<<<<<< HEAD
 import '../models/route_model.dart';
 import 'location_service.dart';
 
@@ -25,6 +26,10 @@ class PlanOption {
   });
 }
 
+=======
+import 'location_service.dart';
+
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
 /// Persists user-created itineraries (spec Section 3.3-3.5): CRUD
 /// operations plus nearest-neighbor route sequencing from a given starting
 /// position. Mirrors [SavedPlacesService]'s ChangeNotifier +
@@ -153,6 +158,7 @@ class ItineraryService extends ChangeNotifier {
     notifyListeners();
   }
 
+<<<<<<< HEAD
   // ─── Curated-route plan generation (addendum spec 3.4) ─────────────────────
 
   /// Average minutes budgeted per stop when sizing how many stops a
@@ -217,6 +223,8 @@ class ItineraryService extends ChangeNotifier {
     return options;
   }
 
+=======
+>>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
   // ─── Nearest-neighbor route sequencing (spec 3.4) ──────────────────────────
 
   /// Attempts to read the device's current GPS position. Returns `null` if
