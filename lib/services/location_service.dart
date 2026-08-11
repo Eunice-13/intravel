@@ -23,6 +23,11 @@ class _RawSite {
   final OperatingHours? officialHours;
   final TicketInfo? officialTicket;
 
+  /// Realistic per-person spending range (addendum spec 3.5). Every site
+  /// gets one, including free/exterior sites, which still carry a small
+  /// incidental-spend range rather than defaulting to ₱0.
+  final BudgetRange budgetRange;
+
   const _RawSite({
     required this.id,
     required this.name,
@@ -39,6 +44,7 @@ class _RawSite {
     this.relatedPlaceIds = const [],
     this.officialHours,
     this.officialTicket,
+    required this.budgetRange,
   });
 }
 
@@ -51,6 +57,7 @@ class LocationService {
   static final List<_RawSite> _rawSites = [
     _RawSite(
       id: 'fort-santiago',
+      budgetRange: const BudgetRange(min: 50, max: 75),
       name: 'Fort Santiago',
       category: 'Fortifications',
       type: 'Fortification',
@@ -94,6 +101,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'museo-ni-rizal',
+      budgetRange: const BudgetRange(min: 50, max: 75),
       name: 'Museo ni Rizal (Rizal Shrine)',
       category: 'Museums',
       type: 'Museum',
@@ -119,6 +127,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'fort-santiago-riverwalk',
+      budgetRange: const BudgetRange(min: 20, max: 70),
       name: 'Fort Santiago Riverwalk',
       category: 'Parks',
       type: 'Riverwalk',
@@ -144,6 +153,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'pasig-river-esplanade',
+      budgetRange: const BudgetRange(min: 20, max: 70),
       name: 'Pasig River Esplanade',
       category: 'Parks',
       type: 'Promenade',
@@ -169,6 +179,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'casa-manila-museum',
+      budgetRange: const BudgetRange(min: 50, max: 75),
       name: 'Casa Manila Museum',
       category: 'Museums',
       type: 'Museum',
@@ -211,6 +222,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'plaza-san-luis-complex',
+      budgetRange: const BudgetRange(min: 30, max: 120),
       name: 'Plaza San Luis Complex',
       category: 'Landmarks',
       type: 'Heritage complex',
@@ -236,6 +248,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'museo-de-intramuros',
+      budgetRange: const BudgetRange(min: 120, max: 150),
       name: 'Museo de Intramuros',
       category: 'Museums',
       type: 'Museum',
@@ -276,6 +289,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'centro-de-turismo-intramuros',
+      budgetRange: const BudgetRange(min: 20, max: 60),
       name: 'Centro de Turismo Intramuros',
       category: 'Museums',
       type: 'Tourism museum',
@@ -316,6 +330,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'baluarte-de-san-diego',
+      budgetRange: const BudgetRange(min: 50, max: 75),
       name: 'Baluarte de San Diego',
       category: 'Fortifications',
       type: 'Fortification',
@@ -359,6 +374,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'baluarte-de-san-diego-gardens',
+      budgetRange: const BudgetRange(min: 20, max: 60),
       name: 'Baluarte de San Diego Gardens',
       category: 'Parks',
       type: 'Historic garden',
@@ -384,6 +400,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'manila-cathedral',
+      budgetRange: const BudgetRange(min: 20, max: 60),
       name: 'Manila Cathedral',
       category: 'Churches',
       type: 'Cathedral',
@@ -424,6 +441,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'san-agustin-church',
+      budgetRange: const BudgetRange(min: 20, max: 100),
       name: 'San Agustin Church',
       category: 'Churches',
       type: 'UNESCO church',
@@ -464,6 +482,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'san-agustin-museum',
+      budgetRange: const BudgetRange(min: 160, max: 200),
       name: 'San Agustin Museum',
       category: 'Museums',
       type: 'Museum',
@@ -496,6 +515,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'bahay-tsinoy',
+      budgetRange: const BudgetRange(min: 60, max: 100),
       name: 'Bahay Tsinoy',
       category: 'Museums',
       type: 'Museum',
@@ -527,6 +547,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'destileria-limtuaco-museum',
+      budgetRange: const BudgetRange(min: 100, max: 200),
       name: 'Destileria Limtuaco Museum',
       category: 'Museums',
       type: 'Museum',
@@ -558,6 +579,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'plaza-roma',
+      budgetRange: const BudgetRange(min: 20, max: 70),
       name: 'Plaza Roma',
       category: 'Parks',
       type: 'Main square',
@@ -583,6 +605,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'ayuntamiento-de-manila',
+      budgetRange: const BudgetRange(min: 15, max: 50),
       name: 'Ayuntamiento de Manila',
       category: 'Landmarks',
       type: 'Civic landmark',
@@ -608,6 +631,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'palacio-del-gobernador',
+      budgetRange: const BudgetRange(min: 15, max: 50),
       name: 'Palacio del Gobernador',
       category: 'Landmarks',
       type: 'Historic site',
@@ -633,6 +657,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'puerta-real-gardens',
+      budgetRange: const BudgetRange(min: 20, max: 70),
       name: 'Puerta Real Gardens',
       category: 'Parks',
       type: 'Historic garden',
@@ -658,6 +683,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'asean-gardens',
+      budgetRange: const BudgetRange(min: 15, max: 50),
       name: 'ASEAN Gardens',
       category: 'Parks',
       type: 'Memorial garden',
@@ -678,6 +704,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'galleria-de-los-presidentes',
+      budgetRange: const BudgetRange(min: 15, max: 40),
       name: 'Galleria de los Presidentes',
       category: 'Parks',
       type: 'Pocket park',
@@ -698,6 +725,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'plaza-de-armas',
+      budgetRange: const BudgetRange(min: 50, max: 75),
       name: 'Plaza de Armas',
       category: 'Parks',
       type: 'Historic plaza',
@@ -719,6 +747,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'plaza-moriones',
+      budgetRange: const BudgetRange(min: 15, max: 50),
       name: 'Plaza Moriones',
       category: 'Parks',
       type: 'Open space',
@@ -740,6 +769,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'baluarte-de-santa-barbara',
+      budgetRange: const BudgetRange(min: 15, max: 40),
       name: 'Baluarte de Santa Barbara',
       category: 'Fortifications',
       type: 'Fortification',
@@ -761,6 +791,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'colegio-de-san-juan-de-letran',
+      budgetRange: const BudgetRange(min: 0, max: 20),
       name: 'Colegio de San Juan de Letran',
       category: 'Schools',
       type: 'School',
@@ -783,6 +814,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'mapua-university-intramuros',
+      budgetRange: const BudgetRange(min: 0, max: 20),
       name: 'Mapúa University (Intramuros Campus)',
       category: 'Schools',
       type: 'School',
@@ -805,6 +837,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'pamantasan-ng-lungsod-ng-maynila',
+      budgetRange: const BudgetRange(min: 0, max: 20),
       name: 'Pamantasan ng Lungsod ng Maynila',
       category: 'Schools',
       type: 'School',
@@ -827,6 +860,7 @@ class LocationService {
     ),
     _RawSite(
       id: 'revellin-de-puerta-real-de-bagumbayan',
+      budgetRange: const BudgetRange(min: 15, max: 40),
       name: 'Revellin de Puerta Real de Bagumbayan',
       category: 'Fortifications',
       type: 'Fortification',
@@ -1828,6 +1862,7 @@ class LocationService {
       highlights: site.highlights,
       visitNote: site.visitNote,
       relatedPlaceIds: site.relatedPlaceIds,
+      budgetRange: site.budgetRange,
     );
   }
 }
