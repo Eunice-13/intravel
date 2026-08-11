@@ -38,6 +38,15 @@ class LocationModel {
   /// IDs of other [LocationModel]s to surface under "Related landmarks".
   final List<String> relatedPlaceIds;
 
+  /// Realistic per-person spending range for this site (addendum spec
+  /// Section 3.5): ticketed sites carry their entrance-fee range, while
+  /// free sites (plazas, open landmarks, etc.) still carry a small
+  /// incidental-spend range (food stalls, souvenirs, parking) rather than
+  /// defaulting to ₱0 just because there's no formal entrance fee. Distinct
+  /// from [ticketInfo], which reflects the official/formal admission fee
+  /// only.
+  final BudgetRange budgetRange;
+
   const LocationModel({
     required this.id,
     required this.name,
@@ -63,6 +72,7 @@ class LocationModel {
     this.highlights = const [],
     this.visitNote = '',
     this.relatedPlaceIds = const [],
+    this.budgetRange = const BudgetRange(min: 0, max: 0),
   });
 
   bool get isOpenNow {
@@ -160,6 +170,31 @@ class TicketInfo {
 
   String get formattedAdult => '$currency${adultPrice.toInt()} adults';
   String get formattedStudent => '$currency${studentPrice.toInt()} students';
+}
+
+/// Realistic per-person spending range in PHP (addendum spec Section 3.5).
+/// Used to power the Plans page budget filter and cost estimates —
+/// including for sites with no formal entrance fee, which still carry a
+/// small incidental-spend range rather than showing as strictly free.
+class BudgetRange {
+  final double min;
+  final double max;
+
+  const BudgetRange({required this.min, required this.max});
+
+  /// Scales this range by a group-size multiplier (addendum spec 3.2):
+  /// group size never filters visible sites/routes, it only scales the
+  /// displayed cost estimate.
+  BudgetRange scaledBy(num multiplier) {
+    return BudgetRange(min: min * multiplier, max: max * multiplier);
+  }
+
+  /// Whether this range overlaps the given filter range, i.e. whether a
+  /// site/route with this cost should be visible under that budget filter.
+  bool overlaps(BudgetRange filter) => min <= filter.max && max >= filter.min;
+
+  String get formatted =>
+      min == max ? '₱${min.round()}' : '₱${min.round()}–₱${max.round()}';
 }
 
 class Review {
