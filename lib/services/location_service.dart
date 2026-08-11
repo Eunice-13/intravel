@@ -745,7 +745,7 @@ class LocationService {
       type: 'Fortification',
       note: 'Historic defensive wall',
       access: 'Historic exterior',
-      photo: 'https://intramuros.gov.ph/wp-content/uploads/2022/09/Barbara.png',
+      photo: 'http://photos.wikimapia.org/p/00/05/75/67/01_1280.jpg',
       area: 'Northern waterfront wall',
       history:
           'Baluarte de Santa Barbara is a historic bastion in the northern waterfront sector of Intramuros, part of the defensive line near Fort Santiago.',
