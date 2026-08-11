@@ -970,8 +970,7 @@ class LocationService {
       type: 'Fortification',
       note: 'Original 1593 gate and forward defense',
       access: 'Free',
-      photo:
-          'https://commons.wikimedia.org/wiki/Special:FilePath/03748jfBaluarte_de_Dilao_Puerta_del_Parian_Revellin_Buildings_Intramurosfvf_19.jpg?width=800',
+      photo: 'assets/intravel/assets/home/puerta-del-parian.jpg',
       area: 'Eastern wall of Intramuros',
       history:
           'Puerta del Parian is one of the original gates of Intramuros, built in 1593 and named after the Parian market of Chinese merchants. The attached Revellin del Parian provided forward defense. The gate was restored between 1967 and 1982.',
@@ -997,8 +996,7 @@ class LocationService {
       type: 'Fortification',
       note: 'Last gate built in Intramuros (1861)',
       access: 'Free',
-      photo:
-          'https://commons.wikimedia.org/wiki/Special:FilePath/Intramurosjf9916_06.JPG?width=800',
+      photo: 'assets/intravel/assets/home/puerta-isabel-ii.jpg',
       area: 'Northern wall facing Binondo',
       history:
           'Puerta Isabel II was the last gate built in Intramuros, opened in 1861 to relieve heavy pedestrian traffic outside the Parian Gate heading toward the Bridge of Spain and Binondo. A statue of Queen Isabel II stands in front. Damaged in 1945, it was restored in 1966.',
@@ -1050,7 +1048,7 @@ class LocationService {
       type: 'Museum',
       note: 'Commemorates Jesuit restorer of Intramuros',
       access: 'Donation',
-      photo: 'assets/intravel/assets/home/san-agustin-church.jpg',
+      photo: 'assets/intravel/assets/home/fr-george-willman-museum.jpg',
       area: 'General Luna Street, near San Agustin',
       history:
           'The Fr. George J. Willman, S.J. Museum commemorates the Austrian-born Jesuit priest who dedicated decades to the restoration of Intramuros and the preservation of San Agustin Church after World War II.',
@@ -1076,7 +1074,7 @@ class LocationService {
       type: 'Gallery',
       note: 'Exhibition space for emerging Filipino artists',
       access: 'Free',
-      photo: 'assets/intravel/assets/home/palacio.jpg',
+      photo: 'assets/intravel/assets/home/ncca-gallery.jpg',
       area: '633 General Luna Street',
       history:
           'The NCCA Gallery at the National Commission for Culture and the Arts building provides exhibition space for young and emerging Filipino artists. Since 2009, it has hosted rotating exhibits promoting creative exploration.',
@@ -1128,7 +1126,7 @@ class LocationService {
       type: 'Historic site',
       note: 'Recalls the mercantile role of Intramuros',
       access: 'Free',
-      photo: 'assets/intravel/assets/home/ayuntamiento.jpg',
+      photo: 'assets/intravel/assets/home/chamber-of-commerce.jpg',
       area: 'Central Intramuros',
       history:
           'The historic Chamber of Commerce site in Intramuros recalls the mercantile role of the walled city during the Spanish and American colonial periods.',
@@ -1154,7 +1152,7 @@ class LocationService {
       type: 'Historic site',
       note: 'Spanish colonial customs house',
       access: 'Free',
-      photo: 'assets/intravel/assets/home/ayuntamiento.jpg',
+      photo: 'assets/intravel/assets/home/aduana-intendencia.jpg',
       area: 'Plaza España, Soriano Avenue corner Muralla Street',
       history:
           'The Aduana Building, also known as the Intendencia, was a Spanish colonial customs house in Intramuros. Located at Plaza España facing Soriano Avenue and Muralla Street, it housed government offices through multiple administrations.',
@@ -1180,7 +1178,7 @@ class LocationService {
       type: 'Historic plaza',
       note: 'Historic open space on Santo Tomas Street',
       access: 'Free',
-      photo: 'assets/intravel/assets/home/plaza-roma.jpg',
+      photo: 'assets/intravel/assets/home/plaza-de-santo-tomas.jpg',
       area: 'Santo Tomas Street, Intramuros',
       history:
           'Plaza de Santo Tomas is a historic open space in Intramuros on Santo Tomas Street, named for Saint Thomas. The plaza forms part of the network of public open spaces that structured the urban plan of the walled city.',
@@ -1232,7 +1230,7 @@ class LocationService {
       type: 'Public school',
       note: 'Public secondary school in Intramuros',
       access: 'Free',
-      photo: 'assets/intravel/assets/home/palacio.jpg',
+      photo: 'assets/intravel/assets/home/manila-high-school.jpg',
       area: 'Intramuros, Manila',
       history:
           'Manila High School is a public secondary school located within the walled city of Intramuros. It serves the local student community and is part of the educational institutions situated within the historic district.',
@@ -1258,7 +1256,7 @@ class LocationService {
       type: 'University',
       note: 'Tourism and hospitality university (1952)',
       access: 'Free',
-      photo: 'assets/intravel/assets/home/palacio.jpg',
+      photo: 'assets/intravel/assets/home/lyceum-of-the-philippines.jpg',
       area: 'Muralla Street, Intramuros',
       history:
           'Lyceum of the Philippines University (LPU) is a private university in Intramuros established in 1952 by Dr. Jose P. Laurel. It is a member of the Intramuros Consortium and is known for its tourism and hospitality programs.',
