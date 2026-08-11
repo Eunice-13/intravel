@@ -38,7 +38,6 @@ class LocationModel {
   /// IDs of other [LocationModel]s to surface under "Related landmarks".
   final List<String> relatedPlaceIds;
 
-<<<<<<< HEAD
   /// Realistic per-person spending range for this site (addendum spec
   /// Section 3.5): ticketed sites carry their entrance-fee range, while
   /// free sites (plazas, open landmarks, etc.) still carry a small
@@ -48,8 +47,6 @@ class LocationModel {
   /// only.
   final BudgetRange budgetRange;
 
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
   const LocationModel({
     required this.id,
     required this.name,
@@ -75,10 +72,7 @@ class LocationModel {
     this.highlights = const [],
     this.visitNote = '',
     this.relatedPlaceIds = const [],
-<<<<<<< HEAD
     this.budgetRange = const BudgetRange(min: 0, max: 0),
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
   });
 
   bool get isOpenNow {
@@ -178,7 +172,6 @@ class TicketInfo {
   String get formattedStudent => '$currency${studentPrice.toInt()} students';
 }
 
-<<<<<<< HEAD
 /// Realistic per-person spending range in PHP (addendum spec Section 3.5).
 /// Used to power the Plans page budget filter and cost estimates —
 /// including for sites with no formal entrance fee, which still carry a
@@ -204,8 +197,6 @@ class BudgetRange {
       min == max ? '₱${min.round()}' : '₱${min.round()}–₱${max.round()}';
 }
 
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
 class Review {
   final String id;
   final String authorName;

@@ -27,10 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     {'key': 'Museums', 'label': 'Museums'},
     {'key': 'Churches', 'label': 'Churches'},
     {'key': 'Parks', 'label': 'Parks'},
-<<<<<<< HEAD
     {'key': 'Schools', 'label': 'Schools'},
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
   ];
 
   List<LocationModel> get _visibleSites {
@@ -54,10 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'Museums': 'Museums',
       'Churches': 'Churches',
       'Parks': 'Parks',
-<<<<<<< HEAD
       'Schools': 'Schools',
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     };
     return labels[_activeFilter] ?? 'All Locations';
   }
@@ -279,11 +273,8 @@ class _CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     return SizedBox(
       height: 30,
       child: ListView.separated(
@@ -299,7 +290,6 @@ class _CategoryChips extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-<<<<<<< HEAD
                 color: isActive
                     ? (isDark ? colors.accent : const Color(0xFF1D6B4A))
                     : colors.card,
@@ -308,14 +298,6 @@ class _CategoryChips extends StatelessWidget {
                   color: isActive
                       ? (isDark ? colors.accent : const Color(0xFF1D6B4A))
                       : (isDark ? colors.line : const Color(0xFFE5E7EB)),
-=======
-                color: isActive ? const Color(0xFF1D6B4A) : colors.card,
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(
-                  color: isActive
-                      ? const Color(0xFF1D6B4A)
-                      : const Color(0xFFE5E7EB),
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                 ),
               ),
               child: Text(
@@ -323,17 +305,11 @@ class _CategoryChips extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-<<<<<<< HEAD
                   color: isDark
                       ? Colors.white
                       : (isActive
                             ? const Color(0xFFF7FFFF)
                             : const Color(0xFF555555)),
-=======
-                  color: isActive
-                      ? const Color(0xFFF7FFFF)
-                      : const Color(0xFF555555),
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                 ),
               ),
             ),

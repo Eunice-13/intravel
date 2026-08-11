@@ -12,7 +12,6 @@ class CuratedRoute {
   final int addToBudget;
   final List<String> locationIds;
 
-<<<<<<< HEAD
   /// Site categories (matching [LocationModel.category] values) used to
   /// pull qualifying sites when generating plan options for this route
   /// (addendum spec 3.4). Distinct from [category], which is only used for
@@ -28,8 +27,6 @@ class CuratedRoute {
   /// lower-cost sites regardless of category.
   final double? maxPerPersonBudget;
 
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
   const CuratedRoute({
     required this.id,
     required this.name,
@@ -40,12 +37,9 @@ class CuratedRoute {
     required this.category,
     this.addToBudget = 0,
     this.locationIds = const [],
-<<<<<<< HEAD
     this.qualifyingCategories = const [],
     this.hours = 2,
     this.maxPerPersonBudget,
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
   });
 }
 

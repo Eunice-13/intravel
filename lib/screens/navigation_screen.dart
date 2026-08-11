@@ -913,10 +913,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ),
               ),
               _AccessibilityModeButton(
-<<<<<<< HEAD
                 colors: colors,
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                 icon: Icons.restaurant_outlined,
                 label: 'Vegetarian',
                 isActive: _vegetarianMode,
@@ -927,10 +924,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ),
               const SizedBox(height: 10),
               _AccessibilityModeButton(
-<<<<<<< HEAD
                 colors: colors,
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                 icon: Icons.touch_app_outlined,
                 label: 'Braille / Voice',
                 isActive: _brailleVoiceMode,
@@ -948,10 +942,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ),
               const SizedBox(height: 10),
               _AccessibilityModeButton(
-<<<<<<< HEAD
                 colors: colors,
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                 icon: Icons.accessible_rounded,
                 label: 'Ramps & Elevators',
                 isActive: _rampsMode,
@@ -1111,11 +1102,8 @@ class _NavFilterChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     return SizedBox(
       height: 34,
       child: ListView.separated(
@@ -1131,7 +1119,6 @@ class _NavFilterChipRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-<<<<<<< HEAD
                 color: isActive
                     ? (isDark ? colors.accent : const Color(0xFF1D6B4A))
                     : colors.card,
@@ -1140,14 +1127,6 @@ class _NavFilterChipRow extends StatelessWidget {
                   color: isActive
                       ? (isDark ? colors.accent : const Color(0xFF1D6B4A))
                       : (isDark ? colors.line : const Color(0xFFE5E7EB)),
-=======
-                color: isActive ? const Color(0xFF1D6B4A) : colors.card,
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(
-                  color: isActive
-                      ? const Color(0xFF1D6B4A)
-                      : const Color(0xFFE5E7EB),
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                 ),
                 boxShadow: isActive
                     ? null
@@ -1175,17 +1154,11 @@ class _NavFilterChipRow extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-<<<<<<< HEAD
                       color: isDark
                           ? Colors.white
                           : (isActive
                                 ? const Color(0xFFF7FFFF)
                                 : const Color(0xFF555555)),
-=======
-                      color: isActive
-                          ? const Color(0xFFF7FFFF)
-                          : const Color(0xFF555555),
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
                     ),
                   ),
                 ],
@@ -1302,20 +1275,14 @@ class _LiveUpdateCard extends StatelessWidget {
 // Black pill in the branch design; turns a soft mint when active.
 
 class _AccessibilityModeButton extends StatelessWidget {
-<<<<<<< HEAD
   final AppColors colors;
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
   final IconData icon;
   final String label;
   final bool isActive;
   final VoidCallback onToggle;
 
   const _AccessibilityModeButton({
-<<<<<<< HEAD
     required this.colors,
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     required this.icon,
     required this.label,
     required this.isActive,
@@ -1324,18 +1291,14 @@ class _AccessibilityModeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-<<<<<<< HEAD
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-=======
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
     return GestureDetector(
       onTap: onToggle,
       child: Container(
         constraints: const BoxConstraints(minHeight: 70),
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
         decoration: BoxDecoration(
-<<<<<<< HEAD
           color: isDark
               ? (isActive ? const Color(0xFF333333) : colors.card)
               : (isActive ? const Color(0xFFE1EEE5) : const Color(0xFF050505)),
@@ -1344,12 +1307,6 @@ class _AccessibilityModeButton extends StatelessWidget {
             color: isDark
                 ? (isActive ? colors.accent : colors.card)
                 : (isActive ? const Color(0xFFA8C4B0) : Colors.transparent),
-=======
-          color: isActive ? const Color(0xFFE1EEE5) : const Color(0xFF050505),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: isActive ? const Color(0xFFA8C4B0) : Colors.transparent,
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
             width: 2,
           ),
         ),
@@ -1357,11 +1314,7 @@ class _AccessibilityModeButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-<<<<<<< HEAD
               color: isDark || !isActive ? Colors.white : AppTheme.forest,
-=======
-              color: isActive ? AppTheme.forest : Colors.white,
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
               size: 26,
             ),
             const SizedBox(width: 14),
@@ -1369,11 +1322,7 @@ class _AccessibilityModeButton extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 13,
-<<<<<<< HEAD
                 color: isDark || !isActive ? Colors.white : AppTheme.forest,
-=======
-                color: isActive ? AppTheme.forest : Colors.white,
->>>>>>> 72e57dbb2a595f88aa9dbad25294aa3937569f77
               ),
             ),
           ],
