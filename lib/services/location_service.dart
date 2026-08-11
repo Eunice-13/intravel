@@ -847,6 +847,373 @@ class LocationService {
       coordinates: const LatLng(14.5857, 120.9740),
       relatedPlaceIds: ['puerta-real-gardens', 'baluarte-de-san-diego'],
     ),
+    _RawSite(
+      id: 'baluarillo-de-san-juan',
+      name: 'Baluarillo de San Juan',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Small bastion on the seafront wall',
+      access: 'Free',
+      photo: 'https://intramuros.gov.ph/wp-content/uploads/2022/09/San-Andres-2-1024x559.png',
+      area: 'Seafront Complex, southwestern wall',
+      history:
+          "Baluarillo de San Juan is a small bastion on the southwestern seafront wall of Intramuros, part of the Seafront Complex that defended the city's coastal edge.",
+      highlights: [
+        'Small bastion on the seafront wall',
+        'Part of the Seafront Complex fortifications',
+        'Views along the southwestern coastal defences',
+      ],
+      visitNote:
+          'This is a heritage exterior. Observe posted barriers and stay on authorised paths.',
+      coordinates: const LatLng(14.5886, 120.9730),
+      relatedPlaceIds: [
+        'baluartillo-de-san-jose',
+        'reducto-de-san-pedro',
+        'baluarte-de-san-diego',
+      ],
+    ),
+    _RawSite(
+      id: 'baluartillo-de-san-jose',
+      name: 'Baluartillo de San Jose',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Small defensive work on the seafront',
+      access: 'Free',
+      photo: 'https://intramuros.gov.ph/wp-content/uploads/2022/09/San-Andres-2-1024x559.png',
+      area: 'Seafront Complex, southwestern wall',
+      history:
+          'Baluartillo de San Jose is a small defensive work within the Seafront Complex of Intramuros, forming part of the interconnected coastal fortifications south of the walled city.',
+      highlights: [
+        'Interconnected coastal defence structure',
+        'Part of the Seafront Complex network',
+        'Historic stonework and wall remnants',
+      ],
+      visitNote:
+          'Exterior access only. Respect barriers and conservation work in the area.',
+      coordinates: const LatLng(14.5882, 120.9724),
+      relatedPlaceIds: [
+        'baluarillo-de-san-juan',
+        'reducto-de-san-pedro',
+        'baluarte-de-san-diego',
+      ],
+    ),
+    _RawSite(
+      id: 'reducto-de-san-pedro',
+      name: 'Reducto de San Pedro',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Compact redoubt on southwestern wall',
+      access: 'Free',
+      photo: 'https://intramuros.gov.ph/wp-content/uploads/2022/09/Reducto-Javier-1.png',
+      area: 'Southwestern wall near Santa Lucia',
+      history:
+          'Reducto de San Pedro is a compact defensive redoubt on the southwestern wall of Intramuros. It served as an ammunition storage point during the Spanish colonial era and is now a heritage ruin.',
+      highlights: [
+        'Former ammunition storage point',
+        'Compact redoubt defensive architecture',
+        'Heritage ruin on the southwestern wall',
+      ],
+      visitNote:
+          'This is a heritage ruin. Do not climb or enter unsafe structures; observe from designated paths.',
+      coordinates: const LatLng(14.5873, 120.9733),
+      relatedPlaceIds: [
+        'baluarillo-de-san-juan',
+        'baluartillo-de-san-jose',
+        'baluarte-de-san-diego',
+      ],
+    ),
+    _RawSite(
+      id: 'puerta-del-parian-revellin-del-parian',
+      name: 'Puerta del Parian & Revellin del Parian',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Original 1593 gate and forward defense',
+      access: 'Free',
+      photo: 'https://commons.wikimedia.org/wiki/Special:FilePath/03748jfBaluarte_de_Dilao_Puerta_del_Parian_Revellin_Buildings_Intramurosfvf_19.jpg?width=800',
+      area: 'Eastern wall of Intramuros',
+      history:
+          'Puerta del Parian is one of the original gates of Intramuros, built in 1593 and named after the Parian market of Chinese merchants. The attached Revellin del Parian provided forward defense. The gate was restored between 1967 and 1982.',
+      highlights: [
+        'One of the original 1593 gates of Intramuros',
+        "Named after the Chinese merchants' Parian market",
+        'Restored between 1967 and 1982',
+      ],
+      visitNote:
+          'Free exterior access. The gate area may be affected by nearby road traffic; exercise care.',
+      coordinates: const LatLng(14.5920, 120.9787),
+      relatedPlaceIds: ['asean-gardens', 'galleria-de-los-presidentes', 'fort-santiago'],
+    ),
+    _RawSite(
+      id: 'puerta-isabel-ii',
+      name: 'Puerta Isabel II',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Last gate built in Intramuros (1861)',
+      access: 'Free',
+      photo: 'https://commons.wikimedia.org/wiki/Special:FilePath/Intramurosjf9916_06.JPG?width=800',
+      area: 'Northern wall facing Binondo',
+      history:
+          'Puerta Isabel II was the last gate built in Intramuros, opened in 1861 to relieve heavy pedestrian traffic outside the Parian Gate heading toward the Bridge of Spain and Binondo. A statue of Queen Isabel II stands in front. Damaged in 1945, it was restored in 1966.',
+      highlights: [
+        'Last gate constructed in Intramuros (1861)',
+        'Statue of Queen Isabel II at the entrance',
+        'Restored in 1966 after WWII damage',
+      ],
+      visitNote:
+          'Free exterior access. Located near Colegio de San Juan de Letran on the northern wall.',
+      coordinates: const LatLng(14.5939, 120.9764),
+      relatedPlaceIds: [
+        'colegio-de-san-juan-de-letran',
+        'fort-santiago',
+        'plaza-moriones',
+      ],
+    ),
+    _RawSite(
+      id: 'foro-de-intramuros',
+      name: 'Foro de Intramuros',
+      category: 'Landmarks',
+      type: 'Cultural venue',
+      note: 'Event venue for performances and conferences',
+      access: 'Event-dependent',
+      photo: 'assets/intravel/assets/home/palacio.jpg',
+      area: 'Central Intramuros',
+      history:
+          'Foro de Intramuros is a cultural event venue within the walled city that hosts performances, conferences, and community events celebrating Philippine heritage.',
+      highlights: [
+        'Cultural performance and conference venue',
+        'Hosts community heritage events',
+        'Located in the heart of the walled city',
+      ],
+      visitNote:
+          'Access depends on scheduled events. Check current programming before visiting.',
+      coordinates: const LatLng(14.5895, 120.9755),
+      relatedPlaceIds: [
+        'plaza-san-luis-complex',
+        'casa-manila-museum',
+        'san-agustin-church',
+      ],
+    ),
+    _RawSite(
+      id: 'fr-george-willman-museum',
+      name: 'Fr. George Willman Museum',
+      category: 'Landmarks',
+      type: 'Museum',
+      note: 'Commemorates Jesuit restorer of Intramuros',
+      access: 'Donation',
+      photo: 'assets/intravel/assets/home/san-agustin-church.jpg',
+      area: 'General Luna Street, near San Agustin',
+      history:
+          'The Fr. George J. Willman, S.J. Museum commemorates the Austrian-born Jesuit priest who dedicated decades to the restoration of Intramuros and the preservation of San Agustin Church after World War II.',
+      highlights: [
+        'Commemorates the restorer of post-war Intramuros',
+        'Located near San Agustin Church',
+        'Tells the story of heritage preservation efforts',
+      ],
+      visitNote:
+          'Suggested donation of PHP 50. Confirm operating hours before visiting.',
+      coordinates: const LatLng(14.5892, 120.9748),
+      relatedPlaceIds: [
+        'san-agustin-church',
+        'san-agustin-museum',
+        'casa-manila-museum',
+      ],
+    ),
+    _RawSite(
+      id: 'ncca-gallery',
+      name: 'NCCA Gallery',
+      category: 'Landmarks',
+      type: 'Gallery',
+      note: 'Exhibition space for emerging Filipino artists',
+      access: 'Free',
+      photo: 'assets/intravel/assets/home/palacio.jpg',
+      area: '633 General Luna Street',
+      history:
+          'The NCCA Gallery at the National Commission for Culture and the Arts building provides exhibition space for young and emerging Filipino artists. Since 2009, it has hosted rotating exhibits promoting creative exploration.',
+      highlights: [
+        'Rotating exhibits by emerging Filipino artists',
+        'Free admission to exhibitions',
+        'Part of the NCCA cultural programme since 2009',
+      ],
+      visitNote:
+          'Free admission. Check current exhibit schedule with the NCCA before visiting.',
+      coordinates: const LatLng(14.5908, 120.9742),
+      relatedPlaceIds: [
+        'palacio-del-gobernador',
+        'ayuntamiento-de-manila',
+        'plaza-roma',
+      ],
+    ),
+    _RawSite(
+      id: 'bagumbayan-light-and-sound-museum',
+      name: 'Bagumbayan Light and Sound Museum',
+      category: 'Landmarks',
+      type: 'Museum',
+      note: 'Immersive audio-visual history experience',
+      access: 'Guided tour',
+      photo: 'assets/intravel/assets/home/fort-santiago.jpg',
+      area: 'Victoria Street corner Santa Lucia Street',
+      history:
+          "The Intramuros and Rizal's Bagumbayan Light and Sound Museum brings Philippine history and the life of Jose Rizal to life through guided audio-visual presentations, narrated journeys, and immersive light shows.",
+      highlights: [
+        'Immersive light and sound historical presentations',
+        'Guided narrated journey through Philippine history',
+        'Brings the story of Jose Rizal to life',
+      ],
+      visitNote:
+          'Approximately PHP 150 per person for guided tour. Confirm schedule and availability.',
+      coordinates: const LatLng(14.5878, 120.9750),
+      relatedPlaceIds: [
+        'fort-santiago',
+        'galleria-de-los-presidentes',
+        'reducto-de-san-pedro',
+      ],
+    ),
+    _RawSite(
+      id: 'chamber-of-commerce',
+      name: 'Chamber of Commerce',
+      category: 'Landmarks',
+      type: 'Historic site',
+      note: 'Recalls the mercantile role of Intramuros',
+      access: 'Free',
+      photo: 'assets/intravel/assets/home/ayuntamiento.jpg',
+      area: 'Central Intramuros',
+      history:
+          'The historic Chamber of Commerce site in Intramuros recalls the mercantile role of the walled city during the Spanish and American colonial periods.',
+      highlights: [
+        'Recalls the commercial history of Intramuros',
+        'Historic mercantile district context',
+        'Spanish and American colonial period significance',
+      ],
+      visitNote:
+          'Free exterior viewing. The site is primarily a historic landmark.',
+      coordinates: const LatLng(14.5917, 120.9755),
+      relatedPlaceIds: [
+        'ayuntamiento-de-manila',
+        'plaza-roma',
+        'palacio-del-gobernador',
+      ],
+    ),
+    _RawSite(
+      id: 'aduana-intendencia',
+      name: 'Aduana (Intendencia)',
+      category: 'Landmarks',
+      type: 'Historic site',
+      note: 'Spanish colonial customs house',
+      access: 'Free',
+      photo: 'assets/intravel/assets/home/ayuntamiento.jpg',
+      area: 'Plaza España, Soriano Avenue corner Muralla Street',
+      history:
+          'The Aduana Building, also known as the Intendencia, was a Spanish colonial customs house in Intramuros. Located at Plaza España facing Soriano Avenue and Muralla Street, it housed government offices through multiple administrations.',
+      highlights: [
+        'Former Spanish colonial customs house',
+        'Located at historic Plaza España',
+        'Housed government offices across multiple eras',
+      ],
+      visitNote:
+          'Free exterior viewing. Interior access is not guaranteed; confirm before visiting.',
+      coordinates: const LatLng(14.5935, 120.9748),
+      relatedPlaceIds: [
+        'plaza-espana',
+        'ayuntamiento-de-manila',
+        'puerta-isabel-ii',
+      ],
+    ),
+    _RawSite(
+      id: 'plaza-de-santo-tomas',
+      name: 'Plaza de Santo Tomas',
+      category: 'Parks',
+      type: 'Historic plaza',
+      note: 'Historic open space on Santo Tomas Street',
+      access: 'Free',
+      photo: 'assets/intravel/assets/home/plaza-roma.jpg',
+      area: 'Santo Tomas Street, Intramuros',
+      history:
+          'Plaza de Santo Tomas is a historic open space in Intramuros on Santo Tomas Street, named for Saint Thomas. The plaza forms part of the network of public open spaces that structured the urban plan of the walled city.',
+      highlights: [
+        'Historic open space named for Saint Thomas',
+        'Part of the planned urban layout of Intramuros',
+        'Quiet rest stop between heritage landmarks',
+      ],
+      visitNote:
+          'Free public open space. Open at all times; exercise normal pedestrian care.',
+      coordinates: const LatLng(14.5929, 120.9745),
+      relatedPlaceIds: ['plaza-roma', 'manila-cathedral', 'ayuntamiento-de-manila'],
+    ),
+    _RawSite(
+      id: 'plaza-espana',
+      name: 'Plaza España',
+      category: 'Parks',
+      type: 'Public square',
+      note: 'Triangular plaza with Philip II monument',
+      access: 'Free',
+      photo: 'assets/intravel/assets/home/plaza-roma.jpg',
+      area: 'Soriano Avenue corner Solana and Muralla Streets',
+      history:
+          'Plaza de España is a triangular public square in Intramuros formed by the intersection of Andres Soriano Avenue, Solana Street, and Muralla Street. It features a monument to King Philip II of Spain, after whom the Philippines was named.',
+      highlights: [
+        'Monument to King Philip II of Spain',
+        'Triangular plaza at three-street intersection',
+        'Historic public square in the walled city',
+      ],
+      visitNote:
+          'Free public open space. Open at all times; be mindful of surrounding traffic.',
+      coordinates: const LatLng(14.5933, 120.9750),
+      relatedPlaceIds: [
+        'aduana-intendencia',
+        'puerta-isabel-ii',
+        'colegio-de-san-juan-de-letran',
+      ],
+    ),
+    _RawSite(
+      id: 'manila-high-school',
+      name: 'Manila High School',
+      category: 'Schools',
+      type: 'Public school',
+      note: 'Public secondary school in Intramuros',
+      access: 'Free',
+      photo: 'assets/intravel/assets/home/palacio.jpg',
+      area: 'Intramuros, Manila',
+      history:
+          'Manila High School is a public secondary school located within the walled city of Intramuros. It serves the local student community and is part of the educational institutions situated within the historic district.',
+      highlights: [
+        'Public secondary school in the walled city',
+        'Serves the local Intramuros student community',
+        'Part of the historic district educational network',
+      ],
+      visitNote:
+          'Public school campus. Visitor access requires coordination with school administration.',
+      coordinates: const LatLng(14.5920, 120.9770),
+      relatedPlaceIds: [
+        'colegio-de-san-juan-de-letran',
+        'puerta-isabel-ii',
+        'fort-santiago',
+      ],
+    ),
+    _RawSite(
+      id: 'lyceum-of-the-philippines-university',
+      name: 'Lyceum of the Philippines University',
+      category: 'Schools',
+      type: 'University',
+      note: 'Tourism and hospitality university (1952)',
+      access: 'Free',
+      photo: 'assets/intravel/assets/home/palacio.jpg',
+      area: 'Muralla Street, Intramuros',
+      history:
+          'Lyceum of the Philippines University (LPU) is a private university in Intramuros established in 1952 by Dr. Jose P. Laurel. It is a member of the Intramuros Consortium and is known for its tourism and hospitality programs.',
+      highlights: [
+        'Established in 1952 by Dr. Jose P. Laurel',
+        'Known for tourism and hospitality programs',
+        'Member of the Intramuros Consortium',
+      ],
+      visitNote:
+          'University campus. Visitor access to campus grounds may require coordination.',
+      coordinates: const LatLng(14.5899, 120.9785),
+      relatedPlaceIds: [
+        'mapua-university-intramuros',
+        'pamantasan-ng-lungsod-ng-maynila',
+        'bahay-tsinoy',
+      ],
+    ),
   ];
 
   // ─── Curated reviews kept from the original native build ───────────────────
@@ -1697,6 +2064,539 @@ class LocationService {
             'Signage could be clearer distinguishing this ravelin from the main Puerta Real gate itself. Worth a mention if a guide is walking you through the area.',
         relativeTime: '8 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 56)),
+      ),
+    ],
+    'baluarillo-de-san-juan': [
+      Review(
+        id: 'r34a',
+        authorName: 'Marco Villanueva',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'The seafront bastion is strikingly photogenic at sunset. You can trace the old wall line from here all the way south.',
+        relativeTime: '1 week ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 7)),
+      ),
+      Review(
+        id: 'r34b',
+        authorName: 'Yuki Tanaka',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text: 'Small but atmospheric. A quiet corner of Intramuros most tourists miss.',
+        relativeTime: '3 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 21)),
+      ),
+      Review(
+        id: 'r34c',
+        authorName: 'Patricia Dela Cruz',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Great spot to appreciate the coastal defence system. The stonework is well-preserved.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      Review(
+        id: 'r34d',
+        authorName: 'David Park',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'Standing on the seafront wall here gives you perspective on how massive the old fortifications were.',
+        relativeTime: '5 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 35)),
+      ),
+    ],
+    'baluartillo-de-san-jose': [
+      Review(
+        id: 'r35a',
+        authorName: 'Carlos Reyes',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Part of the interconnected seafront defences. The coastal views from here are lovely.',
+        relativeTime: '4 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 4)),
+      ),
+      Review(
+        id: 'r35b',
+        authorName: 'Mei Lin Chen',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'Fascinating to see how this links up with San Juan and the other coastal bastions.',
+        relativeTime: '2 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 14)),
+      ),
+      Review(
+        id: 'r35c',
+        authorName: 'Jake Morrison',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text: 'An underrated fortification. Quiet, scenic, and surprisingly intact.',
+        relativeTime: '5 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 35)),
+      ),
+    ],
+    'reducto-de-san-pedro': [
+      Review(
+        id: 'r36a',
+        authorName: 'Angelo Mendoza',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'The compact redoubt shape is unusual. You can still see where ammunition was stored centuries ago.',
+        relativeTime: '6 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 6)),
+      ),
+      Review(
+        id: 'r36b',
+        authorName: 'Sarah Winters',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text: 'A hidden gem on the southwestern wall. The heritage ruin has real atmosphere.',
+        relativeTime: '3 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 21)),
+      ),
+      Review(
+        id: 'r36c',
+        authorName: 'Jun Park',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text: 'Interesting stop for anyone studying colonial-era military architecture.',
+        relativeTime: '6 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 42)),
+      ),
+    ],
+    'puerta-del-parian-revellin-del-parian': [
+      Review(
+        id: 'r37a',
+        authorName: 'Bea Lim',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'One of the original 1593 gates! The Parian market history makes this gate unique among all the entrances.',
+        relativeTime: '2 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+      Review(
+        id: 'r37b',
+        authorName: 'Michael Thompson',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'The restoration work done between 1967 and 1982 is impressive. The revellin adds a dramatic forward-defence dimension.',
+        relativeTime: '2 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 14)),
+      ),
+      Review(
+        id: 'r37c',
+        authorName: 'Rina Aquino',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'I loved learning about the Chinese merchant connection. The gate tells a story about trade and diversity in old Manila.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      Review(
+        id: 'r37d',
+        authorName: 'Kenji Ito',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'A living piece of 16th-century architecture. The gate and revellin together are very photogenic.',
+        relativeTime: '5 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 35)),
+      ),
+    ],
+    'puerta-isabel-ii': [
+      Review(
+        id: 'r38a',
+        authorName: 'Anna Reyes',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'The Queen Isabel statue in front makes it unmistakable. The last gate ever built in the walls—opened in 1861.',
+        relativeTime: '3 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 3)),
+      ),
+      Review(
+        id: 'r38b',
+        authorName: 'Tom Bradley',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Restored beautifully in 1966 after wartime damage. Love the contrast between old stonework and the city beyond.',
+        relativeTime: '2 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 14)),
+      ),
+      Review(
+        id: 'r38c',
+        authorName: 'Mika Santos',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'Standing beneath the arch, you can imagine the crowds heading toward Binondo and the Bridge of Spain.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      Review(
+        id: 'r38d',
+        authorName: 'Raj Patel',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text: 'The Isabel II monument adds a regal touch to an already impressive gateway.',
+        relativeTime: '6 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 42)),
+      ),
+    ],
+    'foro-de-intramuros': [
+      Review(
+        id: 'r39a',
+        authorName: 'Sofia Hernandez',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'Attended a cultural performance here—the venue has wonderful acoustics and an intimate atmosphere.',
+        relativeTime: '5 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 5)),
+      ),
+      Review(
+        id: 'r39b',
+        authorName: 'Daniel Kim',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Great space for events in the heart of the walled city. The heritage setting makes every show special.',
+        relativeTime: '3 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 21)),
+      ),
+      Review(
+        id: 'r39c',
+        authorName: 'Liza Manalo',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Caught a community event celebrating Filipino heritage. The programming is always thoughtful.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+    ],
+    'fr-george-willman-museum': [
+      Review(
+        id: 'r40a',
+        authorName: 'Father Miguel Torres',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'A touching tribute to the Jesuit who spent his life rebuilding Intramuros after the war. Deeply inspiring.',
+        relativeTime: '4 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 4)),
+      ),
+      Review(
+        id: 'r40b',
+        authorName: 'Karen Liu',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Small museum but packed with meaning. The story of preservation after WWII destruction is powerful.',
+        relativeTime: '2 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 14)),
+      ),
+      Review(
+        id: 'r40c',
+        authorName: 'Hannah Fischer',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Wonderful to learn about the people behind Intramuros restoration. The photos and documents are well-curated.',
+        relativeTime: '5 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 35)),
+      ),
+    ],
+    'ncca-gallery': [
+      Review(
+        id: 'r41a',
+        authorName: 'Althea Reyes',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'Free admission and rotating exhibits by emerging Filipino artists. Every visit is different.',
+        relativeTime: '6 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 6)),
+      ),
+      Review(
+        id: 'r41b',
+        authorName: 'Nathan Brooks',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'A welcome creative oasis in the middle of historic Intramuros. The young artists featured are talented.',
+        relativeTime: '3 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 21)),
+      ),
+      Review(
+        id: 'r41c',
+        authorName: 'Jessa Villanueva',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text: 'Since 2009 this gallery has championed new voices in Filipino art. Proud of our NCCA.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+    ],
+    'bagumbayan-light-and-sound-museum': [
+      Review(
+        id: 'r42a',
+        authorName: 'Paolo Gutierrez',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'The Rizal narrative brought to life through immersive light shows. I felt like I was there in 1896.',
+        relativeTime: '2 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+      Review(
+        id: 'r42b',
+        authorName: 'Lisa Chang',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'The guided audio-visual journey is absolutely captivating. Best museum experience in Intramuros.',
+        relativeTime: '2 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 14)),
+      ),
+      Review(
+        id: 'r42c',
+        authorName: 'Ramon Torres',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'The narrated presentation about Philippine history is emotionally powerful. Allow at least an hour.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      Review(
+        id: 'r42d',
+        authorName: 'Nico Dela Peña',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'If you visit only one museum in Intramuros, make it this one. The Rizal story has never been told better.',
+        relativeTime: '6 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 42)),
+      ),
+    ],
+    'chamber-of-commerce': [
+      Review(
+        id: 'r43a',
+        authorName: 'Ricardo Lim',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'A quiet historic landmark that recalls when Intramuros was the mercantile heart of Manila.',
+        relativeTime: '1 week ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 7)),
+      ),
+      Review(
+        id: 'r43b',
+        authorName: 'Priya Sharma',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Interesting to think about the commercial history layered under the fortifications and churches.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      Review(
+        id: 'r43c',
+        authorName: 'Vincent Cruz',
+        authorPhotoUrl: '',
+        rating: 3.0,
+        text:
+            'Mostly an exterior stop, but the colonial-period trade history context is worth appreciating.',
+        relativeTime: '6 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 42)),
+      ),
+    ],
+    'aduana-intendencia': [
+      Review(
+        id: 'r44a',
+        authorName: 'Isabel Gonzales',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'The old customs house at Plaza España tells the story of colonial trade and governance in one building.',
+        relativeTime: '3 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 3)),
+      ),
+      Review(
+        id: 'r44b',
+        authorName: 'Mark Henderson',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Impressive facade on Soriano Avenue. The Intendencia housed government offices across multiple eras.',
+        relativeTime: '3 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 21)),
+      ),
+      Review(
+        id: 'r44c',
+        authorName: 'Luz Ramos',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Standing at the corner of Muralla Street, you can picture the customs inspectors of the Spanish period.',
+        relativeTime: '5 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 35)),
+      ),
+    ],
+    'plaza-de-santo-tomas': [
+      Review(
+        id: 'r45a',
+        authorName: 'Gabriel Mercado',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'A pleasant open space for a rest between visiting heritage landmarks. Shaded and peaceful.',
+        relativeTime: '5 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 5)),
+      ),
+      Review(
+        id: 'r45b',
+        authorName: 'Yuna Park',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Part of the planned urban layout of the walled city. A nice quiet stop on Santo Tomas Street.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      Review(
+        id: 'r45c',
+        authorName: 'Antonio Bautista',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'I love how the plazas of Intramuros tell the story of Spanish urban planning. This one is underrated.',
+        relativeTime: '7 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 49)),
+      ),
+    ],
+    'plaza-espana': [
+      Review(
+        id: 'r46a',
+        authorName: 'Joaquin Luna',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'The monument to King Philip II is striking—this is the man the Philippines was named after. A powerful spot.',
+        relativeTime: '2 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+      Review(
+        id: 'r46b',
+        authorName: 'Sophie Martin',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'The triangular shape formed by three intersecting streets creates an interesting urban space.',
+        relativeTime: '2 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 14)),
+      ),
+      Review(
+        id: 'r46c',
+        authorName: 'Rafael Andrada',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Near the Aduana Building and full of colonial-era significance. The Philip II statue is a must-see.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+      Review(
+        id: 'r46d',
+        authorName: 'Tomas Villanueva',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'Soriano, Solana, and Muralla converge here. The plaza captures the layered history of the walled city.',
+        relativeTime: '6 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 42)),
+      ),
+    ],
+    'manila-high-school': [
+      Review(
+        id: 'r47a',
+        authorName: 'Teacher Marian Lopez',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'A public school inside the walled city—our students walk past centuries of history every day.',
+        relativeTime: '5 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 5)),
+      ),
+      Review(
+        id: 'r47b',
+        authorName: 'Eric Johnson',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text: 'Unique to see a working public school within the fortified walls of old Manila.',
+        relativeTime: '3 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 21)),
+      ),
+      Review(
+        id: 'r47c',
+        authorName: 'Jenny Aguilar',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'The educational presence inside Intramuros keeps the district alive and connected to the community.',
+        relativeTime: '1 month ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 30)),
+      ),
+    ],
+    'lyceum-of-the-philippines-university': [
+      Review(
+        id: 'r48a',
+        authorName: 'Chef Anya Reyes',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            "LPU's tourism and hospitality program is perfect for Intramuros. The campus buzzes with culinary students.",
+        relativeTime: '4 days ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 4)),
+      ),
+      Review(
+        id: 'r48b',
+        authorName: 'Mark Laurel',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'Founded by Dr. Jose P. Laurel in 1952. The university carries his vision of accessible education.',
+        relativeTime: '2 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 14)),
+      ),
+      Review(
+        id: 'r48c',
+        authorName: 'Samantha Chua',
+        authorPhotoUrl: '',
+        rating: 4.0,
+        text:
+            'The Intramuros Consortium connection means LPU students engage directly with heritage preservation.',
+        relativeTime: '5 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 35)),
+      ),
+      Review(
+        id: 'r48d',
+        authorName: 'Bianca Torres',
+        authorPhotoUrl: '',
+        rating: 5.0,
+        text:
+            'LPU on Muralla Street is where future tourism leaders train surrounded by centuries of history.',
+        relativeTime: '7 weeks ago',
+        publishedAt: DateTime.now().subtract(const Duration(days: 49)),
       ),
     ],
   };

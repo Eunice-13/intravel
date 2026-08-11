@@ -27,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     {'key': 'Museums', 'label': 'Museums'},
     {'key': 'Churches', 'label': 'Churches'},
     {'key': 'Parks', 'label': 'Parks'},
+    {'key': 'Schools', 'label': 'Schools'},
   ];
 
   List<LocationModel> get _visibleSites {
@@ -50,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'Museums': 'Museums',
       'Churches': 'Churches',
       'Parks': 'Parks',
+      'Schools': 'Schools',
     };
     return labels[_activeFilter] ?? 'All Locations';
   }

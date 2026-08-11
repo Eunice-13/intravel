@@ -51,6 +51,7 @@ class _PlansScreenState extends State<PlansScreen> {
     {'key': 'Museums', 'label': 'Museums'},
     {'key': 'Churches', 'label': 'Churches'},
     {'key': 'Parks', 'label': 'Parks'},
+    {'key': 'Schools', 'label': 'Schools'},
   ];
 
   void _addRouteToBudget(CuratedRoute route) {
