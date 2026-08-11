@@ -9,6 +9,7 @@ import '../services/tts_service.dart';
 import '../services/gate_selection_service.dart';
 import '../services/gate_service.dart';
 import '../services/location_service.dart';
+import '../services/walking_path_service.dart';
 import 'location_details_screen.dart';
 
 /// Navigation screen. Visual language (route-card overlay, recenter button,
@@ -86,6 +87,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _targetLocation = widget.targetLocation;
     _initializeLocation();
     _rebuildLiveUpdates();
+    WalkingPathService().ensureLoaded().then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _setRouteStartIfNeeded(Position position) {
@@ -457,19 +461,27 @@ class _NavigationScreenState extends State<NavigationScreen> {
     return Icons.north_west_rounded;
   }
 
-  /// The straight-line "route line" rendered on the map, fixed between where
-  /// navigation started and the target — a stable reference line the user
-  /// can be measured as deviating from, unlike a line that redraws from the
-  /// live position every update (which could never register as off-route).
+  /// The route line rendered on the map between where navigation started
+  /// and the target. When both points are near the shared static
+  /// walking-path graph (assets/data/walking_paths.json, loaded via
+  /// [WalkingPathService]), this traces the graph's walkable segments
+  /// instead of a raw straight line; otherwise it falls back to the
+  /// original direct-line behavior. Either way, the line is fixed at
+  /// route-start — a stable reference the user can be measured as deviating
+  /// from, unlike a line that redraws from the live position every update
+  /// (which could never register as off-route).
   Set<Polyline> _buildRouteLine() {
     if (_routeStartPosition == null || _targetLocation == null) return {};
+    final start = LatLng(
+      _routeStartPosition!.latitude,
+      _routeStartPosition!.longitude,
+    );
+    final end = _targetLocation!.coordinates;
+    final pathWaypoints = WalkingPathService().findPath(start, end);
     return {
       Polyline(
         polylineId: const PolylineId('active-route'),
-        points: [
-          LatLng(_routeStartPosition!.latitude, _routeStartPosition!.longitude),
-          _targetLocation!.coordinates,
-        ],
+        points: pathWaypoints ?? [start, end],
         color: AppTheme.accent,
         width: 5,
         patterns: [PatternItem.dash(20), PatternItem.gap(10)],
@@ -638,9 +650,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
                       onChanged: (v) => setState(() => _searchTerm = v),
                       onClear: _clearSearch,
                     ),
-                    if (_searchResults.isNotEmpty)
+                    if (_searchTerm.trim().isNotEmpty)
                       _NavSearchResultsList(
                         colors: colors,
+                        searchTerm: _searchTerm.trim(),
                         results: _searchResults,
                         onSelect: _onSearchResultTapped,
                       ),
@@ -1027,11 +1040,13 @@ class _NavSearchBar extends StatelessWidget {
 
 class _NavSearchResultsList extends StatelessWidget {
   final AppColors colors;
+  final String searchTerm;
   final List<LocationModel> results;
   final ValueChanged<LocationModel> onSelect;
 
   const _NavSearchResultsList({
     required this.colors,
+    required this.searchTerm,
     required this.results,
     required this.onSelect,
   });
@@ -1052,28 +1067,44 @@ class _NavSearchResultsList extends StatelessWidget {
           ),
         ],
       ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        itemCount: results.length,
-        separatorBuilder: (_, __) => Divider(height: 1, color: colors.line),
-        itemBuilder: (context, index) {
-          final site = results[index];
-          return ListTile(
-            dense: true,
-            leading: Icon(Icons.place_outlined, size: 18, color: colors.forest),
-            title: Text(
-              site.name,
-              style: TextStyle(fontSize: 13, color: colors.ink),
+      child: results.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              child: Center(
+                child: Text(
+                  'No results for "$searchTerm"',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: colors.muted, fontSize: 13),
+                ),
+              ),
+            )
+          : ListView.separated(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              itemCount: results.length,
+              separatorBuilder: (_, __) =>
+                  Divider(height: 1, color: colors.line),
+              itemBuilder: (context, index) {
+                final site = results[index];
+                return ListTile(
+                  dense: true,
+                  leading: Icon(
+                    Icons.place_outlined,
+                    size: 18,
+                    color: colors.forest,
+                  ),
+                  title: Text(
+                    site.name,
+                    style: TextStyle(fontSize: 13, color: colors.ink),
+                  ),
+                  subtitle: Text(
+                    site.category,
+                    style: TextStyle(fontSize: 11, color: colors.muted),
+                  ),
+                  onTap: () => onSelect(site),
+                );
+              },
             ),
-            subtitle: Text(
-              site.category,
-              style: TextStyle(fontSize: 11, color: colors.muted),
-            ),
-            onTap: () => onSelect(site),
-          );
-        },
-      ),
     );
   }
 }
