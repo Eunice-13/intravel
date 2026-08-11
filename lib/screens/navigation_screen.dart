@@ -913,6 +913,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ),
               ),
               _AccessibilityModeButton(
+                colors: colors,
                 icon: Icons.restaurant_outlined,
                 label: 'Vegetarian',
                 isActive: _vegetarianMode,
@@ -923,6 +924,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ),
               const SizedBox(height: 10),
               _AccessibilityModeButton(
+                colors: colors,
                 icon: Icons.touch_app_outlined,
                 label: 'Braille / Voice',
                 isActive: _brailleVoiceMode,
@@ -940,6 +942,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               ),
               const SizedBox(height: 10),
               _AccessibilityModeButton(
+                colors: colors,
                 icon: Icons.accessible_rounded,
                 label: 'Ramps & Elevators',
                 isActive: _rampsMode,
@@ -1099,6 +1102,8 @@ class _NavFilterChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SizedBox(
       height: 34,
       child: ListView.separated(
@@ -1114,12 +1119,14 @@ class _NavFilterChipRow extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFF1D6B4A) : colors.card,
+                color: isActive
+                    ? (isDark ? colors.accent : const Color(0xFF1D6B4A))
+                    : colors.card,
                 borderRadius: BorderRadius.circular(25),
                 border: Border.all(
                   color: isActive
-                      ? const Color(0xFF1D6B4A)
-                      : const Color(0xFFE5E7EB),
+                      ? (isDark ? colors.accent : const Color(0xFF1D6B4A))
+                      : (isDark ? colors.line : const Color(0xFFE5E7EB)),
                 ),
                 boxShadow: isActive
                     ? null
@@ -1147,9 +1154,11 @@ class _NavFilterChipRow extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: isActive
-                          ? const Color(0xFFF7FFFF)
-                          : const Color(0xFF555555),
+                      color: isDark
+                          ? Colors.white
+                          : (isActive
+                                ? const Color(0xFFF7FFFF)
+                                : const Color(0xFF555555)),
                     ),
                   ),
                 ],
@@ -1266,12 +1275,14 @@ class _LiveUpdateCard extends StatelessWidget {
 // Black pill in the branch design; turns a soft mint when active.
 
 class _AccessibilityModeButton extends StatelessWidget {
+  final AppColors colors;
   final IconData icon;
   final String label;
   final bool isActive;
   final VoidCallback onToggle;
 
   const _AccessibilityModeButton({
+    required this.colors,
     required this.icon,
     required this.label,
     required this.isActive,
@@ -1280,16 +1291,22 @@ class _AccessibilityModeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GestureDetector(
       onTap: onToggle,
       child: Container(
         constraints: const BoxConstraints(minHeight: 70),
         padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFE1EEE5) : const Color(0xFF050505),
+          color: isDark
+              ? (isActive ? const Color(0xFF333333) : colors.card)
+              : (isActive ? const Color(0xFFE1EEE5) : const Color(0xFF050505)),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: isActive ? const Color(0xFFA8C4B0) : Colors.transparent,
+            color: isDark
+                ? (isActive ? colors.accent : colors.card)
+                : (isActive ? const Color(0xFFA8C4B0) : Colors.transparent),
             width: 2,
           ),
         ),
@@ -1297,7 +1314,7 @@ class _AccessibilityModeButton extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isActive ? AppTheme.forest : Colors.white,
+              color: isDark || !isActive ? Colors.white : AppTheme.forest,
               size: 26,
             ),
             const SizedBox(width: 14),
@@ -1305,7 +1322,7 @@ class _AccessibilityModeButton extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 13,
-                color: isActive ? AppTheme.forest : Colors.white,
+                color: isDark || !isActive ? Colors.white : AppTheme.forest,
               ),
             ),
           ],
