@@ -212,6 +212,9 @@ class Review {
     required this.rating,
     required this.text,
     required this.publishedAt,
+    // Accept existing seeded review data while displaying the current value
+    // from [publishedAt] through the computed [relativeTime] getter below.
+    String? relativeTime,
   }) : assert(
          rating >= 1.0 && rating <= 5.0,
          'Review rating must be between 1.0 and 5.0',

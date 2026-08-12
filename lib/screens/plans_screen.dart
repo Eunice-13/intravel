@@ -140,13 +140,10 @@ class _PlansScreenState extends State<PlansScreen> {
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-<<<<<<< HEAD
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final budgetFieldColor = isDark
         ? const Color(0xFF6E8178)
         : const Color(0xFF65746C);
-=======
->>>>>>> 1bf5e9873516450c381783a752bdee7f035f10a7
     final allRoutes = RouteService().getAllRoutes();
     final routes = allRoutes.where(_routeWithinBudget).toList();
     final sites = LocationService().getAllLocations().where((s) {
@@ -277,12 +274,7 @@ class _PlansScreenState extends State<PlansScreen> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isActive
-<<<<<<< HEAD
                               ? (Theme.of(context).brightness == Brightness.dark
-=======
-                              ? (Theme.of(context).brightness ==
-                                        Brightness.dark
->>>>>>> 1bf5e9873516450c381783a752bdee7f035f10a7
                                     ? colors.accent
                                     : const Color(0xFF1D7654))
                               : colors.card,
@@ -390,7 +382,6 @@ class _PlansScreenState extends State<PlansScreen> {
               // Shared with the detailed filter sheet opened from the
               // header icon above: editing either updates the other, and
               // both filter the curated routes and site list live.
-<<<<<<< HEAD
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -453,72 +444,6 @@ class _PlansScreenState extends State<PlansScreen> {
                   ],
                 ),
               ),
-=======
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEDE7DC),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _budgetBarController,
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: const Color(0xFF65746C),
-                          ),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            border: InputBorder.none,
-                            hintText: '₱ Type your total budget…',
-                            errorText: _budgetBarError,
-                          ),
-                          onChanged: (v) {
-                            final trimmed = v.trim();
-                            final parsed = double.tryParse(trimmed);
-                            final nextMax = trimmed.isEmpty
-                                ? null
-                                : (parsed != null && parsed >= 0
-                                      ? parsed
-                                      : _budgetFilter.max);
-                            // Validation (addendum spec 3.1): the max
-                            // budget must be greater than the min budget
-                            // set via the detailed filter sheet.
-                            if (nextMax != null &&
-                                _budgetFilter.min != null &&
-                                nextMax <= _budgetFilter.min!) {
-                              setState(() {
-                                _budgetBarError =
-                                    'Max must be greater than min (₱${_budgetFilter.min!.round()}).';
-                              });
-                              return;
-                            }
-                            _applyBudgetFilter(
-                              PlanBudgetFilter(
-                                min: _budgetFilter.min,
-                                max: nextMax,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      Text(
-                        'Est. total\n${_formatEstimatedTotal(sites)}',
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          color: const Color(0xFF6E8178),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
->>>>>>> 1bf5e9873516450c381783a752bdee7f035f10a7
               const SizedBox(height: 18),
 
               // ─── All Tourist Sites ─────────────────────────────────────
