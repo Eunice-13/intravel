@@ -1,0 +1,27 @@
+{
+  "_comment": "Shared static walking-path data for Intramuros, loaded identically by the Flutter app (lib/screens/navigation_screen.dart) and the HTML/JS dashboard (assets/intravel/index.html). Straight-line segments between named nodes (gates + major landmarks with verified coordinates), not a live-routed path. This is a reasonable approximation for a small, fixed walking area, matching the same standard already accepted for nearest-neighbor itinerary sequencing (Section 3.4). Coordinates for gates come from lib/services/gate_service.dart; coordinates for landmarks come from lib/services/location_service.dart (both already verified/established elsewhere in the project, not invented here). Distances are used for straight-line fallback segments when a specific stop-to-stop pair has no explicit path segment defined.",
+  "version": 1,
+  "nodes": [
+    { "id": "puerta-santa-lucia", "name": "Puerta de Santa Lucia", "kind": "gate", "lat": 14.588417, "lng": 120.9735 },
+    { "id": "puerta-real", "name": "Puerta Real", "kind": "gate", "lat": 14.5875, "lng": 120.974722 },
+    { "id": "victoria-street", "name": "Victoria Street", "kind": "gate", "lat": 14.5895, "lng": 120.978667 },
+    { "id": "aduana-magallanes", "name": "Aduana / Magallanes", "kind": "gate", "lat": 14.594306, "lng": 120.974083 },
+    { "id": "fort-santiago", "name": "Fort Santiago", "kind": "landmark", "lat": 14.5941, "lng": 120.9725 },
+    { "id": "manila-cathedral", "name": "Manila Cathedral", "kind": "landmark", "lat": 14.5915, "lng": 120.9730 },
+    { "id": "ayuntamiento-de-manila", "name": "Ayuntamiento de Manila", "kind": "landmark", "lat": 14.5906, "lng": 120.9767 },
+    { "id": "museo-de-intramuros", "name": "Museo de Intramuros", "kind": "landmark", "lat": 14.5888, "lng": 120.9732 },
+    { "id": "plaza-roma", "name": "Plaza Roma", "kind": "landmark", "lat": 14.5917, "lng": 120.9731 },
+    { "id": "baluarte-de-san-diego", "name": "Baluarte de San Diego", "kind": "landmark", "lat": 14.5865, "lng": 120.9724 }
+  ],
+  "segments": [
+    { "from": "puerta-santa-lucia", "to": "baluarte-de-san-diego" },
+    { "from": "baluarte-de-san-diego", "to": "museo-de-intramuros" },
+    { "from": "museo-de-intramuros", "to": "manila-cathedral" },
+    { "from": "manila-cathedral", "to": "plaza-roma" },
+    { "from": "plaza-roma", "to": "puerta-real" },
+    { "from": "manila-cathedral", "to": "fort-santiago" },
+    { "from": "fort-santiago", "to": "aduana-magallanes" },
+    { "from": "plaza-roma", "to": "ayuntamiento-de-manila" },
+    { "from": "ayuntamiento-de-manila", "to": "victoria-street" }
+  ]
+}

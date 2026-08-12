@@ -8,6 +8,7 @@ import 'services/tts_service.dart';
 import 'services/saved_places_service.dart';
 import 'services/gate_selection_service.dart';
 import 'services/itinerary_service.dart';
+import 'services/review_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +25,7 @@ void main() {
   TtsService().initialize();
   SavedPlacesService.instance.load();
   ItineraryService.instance.load();
+  ReviewService.instance.load();
 
   runApp(const InTravelApp());
 }

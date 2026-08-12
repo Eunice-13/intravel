@@ -9,7 +9,11 @@ import '../services/tts_service.dart';
 import '../services/gate_selection_service.dart';
 import '../services/gate_service.dart';
 import '../services/location_service.dart';
+import '../services/walking_path_service.dart';
+import '../services/accessibility_settings_service.dart';
+import '../widgets/location_photo.dart';
 import 'location_details_screen.dart';
+import 'osm_poi_map_screen.dart';
 
 /// Navigation screen. Visual language (route-card overlay, recenter button,
 /// Live Updates list, black accessibility-mode pills) is ported from the
@@ -43,6 +47,8 @@ class NavigationScreen extends StatefulWidget {
 
 class _NavigationScreenState extends State<NavigationScreen> {
   GoogleMapController? _mapController;
+  MapType _mapType = MapType.normal;
+  bool _isPanelExpanded = true;
   final TtsService _ttsService = TtsService();
   Position? _currentPosition;
   LocationModel? _targetLocation;
@@ -52,6 +58,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
   bool _vegetarianMode = true;
   bool _brailleVoiceMode = true;
   bool _rampsMode = true;
+
+  // 3 additional confirmed modes (addendum spec Section 4.2) — default to
+  // active, matching the existing three's default-on behavior.
+  bool _restAreasMode = true;
+  bool _pwdSeniorPriorityMode = true;
+  bool _audioDescribedDirectionsMode = true;
 
   final List<_LiveUpdate> _liveUpdates = [];
 
@@ -86,6 +98,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _targetLocation = widget.targetLocation;
     _initializeLocation();
     _rebuildLiveUpdates();
+    WalkingPathService().ensureLoaded().then((_) {
+      if (mounted) setState(() {});
+    });
   }
 
   void _setRouteStartIfNeeded(Position position) {
@@ -150,6 +165,36 @@ class _NavigationScreenState extends State<NavigationScreen> {
         ),
       );
     }
+    if (_restAreasMode) {
+      _liveUpdates.add(
+        const _LiveUpdate(
+          title: 'Rest Areas & Seating',
+          subtitle: '2 benches — 40m ahead',
+          type: AccessibilityType.restAreas,
+          isActive: true,
+        ),
+      );
+    }
+    if (_pwdSeniorPriorityMode) {
+      _liveUpdates.add(
+        const _LiveUpdate(
+          title: 'PWD & Senior Priority',
+          subtitle: 'Priority assistance available on request',
+          type: AccessibilityType.pwdSeniorPriority,
+          isActive: true,
+        ),
+      );
+    }
+    if (_audioDescribedDirectionsMode) {
+      _liveUpdates.add(
+        const _LiveUpdate(
+          title: 'Audio-Described Directions',
+          subtitle: 'Narrated turn-by-turn active',
+          type: AccessibilityType.audioDescribedDirections,
+          isActive: true,
+        ),
+      );
+    }
   }
 
   bool _isModeActive(AccessibilityType type) {
@@ -160,6 +205,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
         return _rampsMode;
       case AccessibilityType.brailleVoice:
         return _brailleVoiceMode;
+      case AccessibilityType.restAreas:
+        return _restAreasMode;
+      case AccessibilityType.pwdSeniorPriority:
+        return _pwdSeniorPriorityMode;
+      case AccessibilityType.audioDescribedDirections:
+        return _audioDescribedDirectionsMode;
       default:
         return true;
     }
@@ -252,21 +303,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
         .toList();
   }
 
-  // ─── Turn-by-turn routing math (straight-line, no live Directions API) ────
+  // ─── Marker building (native GoogleMap Marker/InfoWindow) ─────────────────
 
   Set<Marker> _buildMarkers() {
     final markers = <Marker>{};
     if (_targetLocation != null) {
-      markers.add(
-        Marker(
-          markerId: MarkerId(_targetLocation!.id),
-          position: _targetLocation!.coordinates,
-          infoWindow: InfoWindow(title: _targetLocation!.name),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueGreen,
-          ),
-        ),
-      );
+      markers.add(_locationPinMarker(_targetLocation!, BitmapDescriptor.hueGreen));
     }
     if (_currentPosition != null) {
       markers.add(
@@ -306,39 +348,91 @@ class _NavigationScreenState extends State<NavigationScreen> {
     if (_isBrowseMode) {
       for (final site in _filteredCategoryLocations) {
         markers.add(
-          Marker(
-            markerId: MarkerId('filter-${site.id}'),
-            position: site.coordinates,
-            infoWindow: InfoWindow(
-              title: site.name,
-              snippet: site.category,
-              onTap: () => _openLocationDetails(site),
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              _getCategoryMarkerHue(site.category),
-            ),
-          ),
+          _locationPinMarker(site, _getCategoryMarkerHue(site.category)),
         );
       }
       if (_focusedSearchResult != null) {
-        final site = _focusedSearchResult!;
         markers.add(
-          Marker(
-            markerId: MarkerId('search-${site.id}'),
-            position: site.coordinates,
-            infoWindow: InfoWindow(
-              title: site.name,
-              snippet: 'Tap for details',
-              onTap: () => _openLocationDetails(site),
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueRose,
-            ),
-          ),
+          _locationPinMarker(_focusedSearchResult!, BitmapDescriptor.hueRose),
         );
       }
     }
     return markers;
+  }
+
+  /// Builds a marker for a location pin (spec Section 5): tapping it shows
+  /// a photo + name bottom sheet (see [_showLocationPinSheet]) instead of
+  /// google_maps_flutter's text-only `InfoWindow`, which can't display an
+  /// image. Used for every marker that has an associated [LocationModel] —
+  /// target location, browse-mode filtered pins, and the focused search
+  /// result — but not the "You are here" current-position marker, which
+  /// has no location record/photo of its own.
+  Marker _locationPinMarker(LocationModel location, double hue) {
+    return Marker(
+      markerId: MarkerId(location.id),
+      position: location.coordinates,
+      icon: BitmapDescriptor.defaultMarkerWithHue(hue),
+      onTap: () => _showLocationPinSheet(location),
+    );
+  }
+
+  /// Photo + name bottom sheet shown when a location pin is tapped (spec
+  /// Section 5) — google_maps_flutter's `InfoWindow` is text-only by
+  /// design, so a photo can't be shown inline above the pin the way
+  /// `flutter_map`'s custom overlay widgets can. A bottom sheet keeps the
+  /// same "tap pin → see photo" outcome without depending on a
+  /// screen-coordinate conversion that would need to be recomputed on
+  /// every camera move (`GoogleMapController.getScreenCoordinate` is
+  /// async and has no continuous camera-move stream to drive it from).
+  void _showLocationPinSheet(LocationModel location) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  height: 120,
+                  width: double.infinity,
+                  child: LocationPhoto(
+                    imagePath: location.imageUrl,
+                    fallbackColor: AppTheme.forest.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                location.name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _openLocationDetails(location);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.forest,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('View details'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openLocationDetails(LocationModel site) {
@@ -457,19 +551,27 @@ class _NavigationScreenState extends State<NavigationScreen> {
     return Icons.north_west_rounded;
   }
 
-  /// The straight-line "route line" rendered on the map, fixed between where
-  /// navigation started and the target — a stable reference line the user
-  /// can be measured as deviating from, unlike a line that redraws from the
-  /// live position every update (which could never register as off-route).
+  /// The route line rendered on the map between where navigation started
+  /// and the target. When both points are near the shared static
+  /// walking-path graph (assets/data/walking_paths.json, loaded via
+  /// [WalkingPathService]), this traces the graph's walkable segments
+  /// instead of a raw straight line; otherwise it falls back to the
+  /// original direct-line behavior. Either way, the line is fixed at
+  /// route-start — a stable reference the user can be measured as deviating
+  /// from, unlike a line that redraws from the live position every update
+  /// (which could never register as off-route).
   Set<Polyline> _buildRouteLine() {
     if (_routeStartPosition == null || _targetLocation == null) return {};
+    final start = LatLng(
+      _routeStartPosition!.latitude,
+      _routeStartPosition!.longitude,
+    );
+    final end = _targetLocation!.coordinates;
+    final pathWaypoints = WalkingPathService().findPath(start, end);
     return {
       Polyline(
         polylineId: const PolylineId('active-route'),
-        points: [
-          LatLng(_routeStartPosition!.latitude, _routeStartPosition!.longitude),
-          _targetLocation!.coordinates,
-        ],
+        points: pathWaypoints ?? [start, end],
         color: AppTheme.accent,
         width: 5,
         patterns: [PatternItem.dash(20), PatternItem.gap(10)],
@@ -612,6 +714,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
           child: Stack(
             children: [
               GoogleMap(
+                mapType: _mapType,
                 initialCameraPosition: CameraPosition(
                   target: _fallbackCameraTarget,
                   zoom: 16,
@@ -622,6 +725,27 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
                 onMapCreated: (c) => _mapController = c,
+              ),
+              Positioned(
+                bottom: 14,
+                right: 20,
+                child: _MapLayerToggleButton(
+                  isSatelliteView: _mapType == MapType.satellite,
+                  onToggle: () => setState(() {
+                    _mapType = _mapType == MapType.satellite
+                        ? MapType.normal
+                        : MapType.satellite;
+                  }),
+                ),
+              ),
+              Positioned(
+                bottom: 14,
+                left: 20,
+                child: _ExplorePoiMapButton(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const OsmPoiMapScreen()),
+                  ),
+                ),
               ),
               // Persistent search bar + filter chip row (always visible,
               // per spec: not tap-to-reveal).
@@ -638,9 +762,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
                       onChanged: (v) => setState(() => _searchTerm = v),
                       onClear: _clearSearch,
                     ),
-                    if (_searchResults.isNotEmpty)
+                    if (_searchTerm.trim().isNotEmpty)
                       _NavSearchResultsList(
                         colors: colors,
+                        searchTerm: _searchTerm.trim(),
                         results: _searchResults,
                         onSelect: _onSearchResultTapped,
                       ),
@@ -673,6 +798,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
           child: Stack(
             children: [
               GoogleMap(
+                mapType: _mapType,
                 initialCameraPosition: CameraPosition(
                   target: _targetLocation?.coordinates ?? _fallbackCameraTarget,
                   zoom: 16,
@@ -684,11 +810,36 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
                 onMapCreated: (c) => _mapController = c,
-                onCameraMoveStarted: () {},
+              ),
+              Positioned(
+                bottom: 14,
+                right: 20,
+                child: _MapLayerToggleButton(
+                  isSatelliteView: _mapType == MapType.satellite,
+                  onToggle: () => setState(() {
+                    _mapType = _mapType == MapType.satellite
+                        ? MapType.normal
+                        : MapType.satellite;
+                  }),
+                ),
+              ),
+              // Back button (addendum spec 2.1) — this screen has no
+              // AppBar of its own (full-bleed map + floating controls), so
+              // the back affordance is a floating circular button matching
+              // the style of the other floating map controls on this
+              // screen, rather than the "‹" text-link pattern used on
+              // scrollable-content screens elsewhere in the app. Placed
+              // above the turn-by-turn route card so the two don't overlap.
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 12,
+                left: 20,
+                child: _MapBackButton(
+                  onTap: () => Navigator.maybePop(context),
+                ),
               ),
               // Turn-by-turn route card overlay
               Positioned(
-                top: MediaQuery.of(context).padding.top + 12,
+                top: MediaQuery.of(context).padding.top + 64,
                 left: 24,
                 right: 24,
                 child: Container(
@@ -800,7 +951,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               Positioned(
                 top:
                     MediaQuery.of(context).padding.top +
-                    (_isOffRoute ? 190 : 148),
+                    (_isOffRoute ? 242 : 200),
                 right: 17,
                 child: GestureDetector(
                   onTap: _recenterOnRoute,
@@ -837,118 +988,262 @@ class _NavigationScreenState extends State<NavigationScreen> {
   // ─── Shared "Live Updates" / "Accessibility Modes" panel ──────────────────
 
   Widget _buildAccessibilityPanel(AppColors colors) {
-    return Expanded(
-      flex: 3,
+    return AnimatedBuilder(
+      animation: AccessibilitySettingsService.instance,
+      builder: (context, _) {
+        // Addendum spec 4.2: when Accessibility Support is OFF in Settings,
+        // the entire Live Updates / Accessibility Modes panel is hidden
+        // from the Navigate flow rather than just disabling its contents.
+        if (!AccessibilitySettingsService.instance.isEnabled) {
+          return const SizedBox.shrink();
+        }
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: _isPanelExpanded
+              ? _buildExpandedPanelContent(colors)
+              : _buildCollapsedPanelBar(colors),
+        );
+      },
+    );
+  }
+
+  /// Full "Live Updates" + "Accessibility Modes" panel content, shown when
+  /// [_isPanelExpanded] is true. Wrapped in a fixed-viewport-height
+  /// [SizedBox] (rather than [Expanded]) so it works inside the
+  /// [AnimatedSize] used to animate the collapse/expand transition —
+  /// [Expanded] requires a [Flex] ancestor, which [AnimatedSize] isn't.
+  Widget _buildExpandedPanelContent(AppColors colors) {
+    return SizedBox(
+      height: 460,
       child: Container(
         decoration: BoxDecoration(
           color: colors.card,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 21, 24, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    'Live Updates',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      color: colors.ink,
+        child: Column(
+          children: [
+            _panelHandle(colors),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          'Live Updates',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                            color: colors.ink,
+                          ),
+                        ),
+                        Text(
+                          '${_liveUpdates.where((u) => u.isActive).length} active',
+                          style: TextStyle(fontSize: 12, color: colors.muted),
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    '${_liveUpdates.where((u) => u.isActive).length} active',
-                    style: TextStyle(fontSize: 12, color: colors.muted),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 19),
-              if (_liveUpdates.isEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.paper,
-                    borderRadius: BorderRadius.circular(23),
-                  ),
-                  child: Text(
-                    'No accessibility modes are active.',
-                    style: TextStyle(fontSize: 13, color: colors.muted),
-                  ),
-                )
-              else
-                ..._liveUpdates.map(
-                  (update) => _LiveUpdateCard(
-                    colors: colors,
-                    update: update,
-                    onTap: () {
-                      if (update.type == AccessibilityType.brailleVoice) {
-                        _ttsService.speak(
-                          '${update.title}. ${update.subtitle}',
-                        );
-                      }
-                    },
-                  ),
+                    const SizedBox(height: 19),
+                    if (_liveUpdates.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 15,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.paper,
+                          borderRadius: BorderRadius.circular(23),
+                        ),
+                        child: Text(
+                          'No accessibility modes are active.',
+                          style: TextStyle(fontSize: 13, color: colors.muted),
+                        ),
+                      )
+                    else
+                      ..._liveUpdates.map(
+                        (update) => _LiveUpdateCard(
+                          colors: colors,
+                          update: update,
+                          onTap: () {
+                            if (update.type == AccessibilityType.brailleVoice) {
+                              _ttsService.speak(
+                                '${update.title}. ${update.subtitle}',
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 13),
+                      padding: const EdgeInsets.only(top: 10),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: colors.muted.withValues(alpha: 0.4),
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        'ACCESSIBILITY MODES',
+                        style: TextStyle(fontSize: 12, color: colors.muted),
+                      ),
+                    ),
+                    // Two-column grid (addendum spec 4.2) — same button
+                    // styling as before, just reflowed from a vertical
+                    // stack into a 2-across grid to fit all 6 modes.
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.35,
+                      children: [
+                        _AccessibilityModeButton(
+                          icon: Icons.restaurant_outlined,
+                          label: 'Vegetarian',
+                          isActive: _vegetarianMode,
+                          onToggle: () => setState(() {
+                            _vegetarianMode = !_vegetarianMode;
+                            _rebuildLiveUpdates();
+                          }),
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.touch_app_outlined,
+                          label: 'Braille / Voice',
+                          isActive: _brailleVoiceMode,
+                          onToggle: () {
+                            setState(() {
+                              _brailleVoiceMode = !_brailleVoiceMode;
+                              _rebuildLiveUpdates();
+                            });
+                            if (_brailleVoiceMode) {
+                              _ttsService.speak('Voice mode activated');
+                            } else {
+                              _ttsService.stop();
+                            }
+                          },
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.accessible_rounded,
+                          label: 'Ramps & Elevators',
+                          isActive: _rampsMode,
+                          onToggle: () => setState(() {
+                            _rampsMode = !_rampsMode;
+                            _rebuildLiveUpdates();
+                          }),
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.chair_outlined,
+                          label: 'Rest Areas & Seating Nearby',
+                          isActive: _restAreasMode,
+                          onToggle: () => setState(() {
+                            _restAreasMode = !_restAreasMode;
+                            _rebuildLiveUpdates();
+                          }),
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.accessible_forward_rounded,
+                          label: 'PWD & Senior Priority Assistance',
+                          isActive: _pwdSeniorPriorityMode,
+                          onToggle: () => setState(() {
+                            _pwdSeniorPriorityMode = !_pwdSeniorPriorityMode;
+                            _rebuildLiveUpdates();
+                          }),
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.record_voice_over_outlined,
+                          label: 'Audio-Described Directions',
+                          isActive: _audioDescribedDirectionsMode,
+                          onToggle: () {
+                            setState(() {
+                              _audioDescribedDirectionsMode =
+                                  !_audioDescribedDirectionsMode;
+                              _rebuildLiveUpdates();
+                            });
+                            if (_audioDescribedDirectionsMode) {
+                              _ttsService.speak(
+                                'Audio-described directions activated',
+                              );
+                            } else {
+                              _ttsService.stop();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              const SizedBox(height: 4),
-              Container(
-                margin: const EdgeInsets.only(bottom: 13),
-                padding: const EdgeInsets.only(top: 10),
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: colors.muted.withValues(alpha: 0.4)),
-                  ),
-                ),
-                child: Text(
-                  'ACCESSIBILITY MODES',
-                  style: TextStyle(fontSize: 12, color: colors.muted),
-                ),
               ),
-              _AccessibilityModeButton(
-                icon: Icons.restaurant_outlined,
-                label: 'Vegetarian',
-                isActive: _vegetarianMode,
-                onToggle: () => setState(() {
-                  _vegetarianMode = !_vegetarianMode;
-                  _rebuildLiveUpdates();
-                }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Collapsed bar shown when [_isPanelExpanded] is false: just the handle
+  /// and the "Live Updates" label/active count, so the map above can take
+  /// up the freed space.
+  Widget _buildCollapsedPanelBar(AppColors colors) {
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          _panelHandle(colors),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Live Updates',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: colors.ink,
               ),
-              const SizedBox(height: 10),
-              _AccessibilityModeButton(
-                icon: Icons.touch_app_outlined,
-                label: 'Braille / Voice',
-                isActive: _brailleVoiceMode,
-                onToggle: () {
-                  setState(() {
-                    _brailleVoiceMode = !_brailleVoiceMode;
-                    _rebuildLiveUpdates();
-                  });
-                  if (_brailleVoiceMode) {
-                    _ttsService.speak('Voice mode activated');
-                  } else {
-                    _ttsService.stop();
-                  }
-                },
-              ),
-              const SizedBox(height: 10),
-              _AccessibilityModeButton(
-                icon: Icons.accessible_rounded,
-                label: 'Ramps & Elevators',
-                isActive: _rampsMode,
-                onToggle: () => setState(() {
-                  _rampsMode = !_rampsMode;
-                  _rebuildLiveUpdates();
-                }),
-              ),
-            ],
+            ),
+          ),
+          Text(
+            '${_liveUpdates.where((u) => u.isActive).length} active',
+            style: TextStyle(fontSize: 12, color: colors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Chevron/handle control toggling [_isPanelExpanded] — tapping it
+  /// collapses the Live Updates/Accessibility Modes panel down to a thin
+  /// bar so the map can take up more of the screen, or restores it.
+  /// Placed at the panel's top edge in both states, matching the card's
+  /// existing rounded-top-corner style.
+  Widget _panelHandle(AppColors colors) {
+    return Center(
+      child: GestureDetector(
+        onTap: () => setState(() => _isPanelExpanded = !_isPanelExpanded),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: 44,
+          height: 28,
+          alignment: Alignment.center,
+          child: Icon(
+            _isPanelExpanded
+                ? Icons.keyboard_arrow_down_rounded
+                : Icons.keyboard_arrow_up_rounded,
+            color: colors.muted,
+            size: 22,
           ),
         ),
       ),
@@ -1027,11 +1322,13 @@ class _NavSearchBar extends StatelessWidget {
 
 class _NavSearchResultsList extends StatelessWidget {
   final AppColors colors;
+  final String searchTerm;
   final List<LocationModel> results;
   final ValueChanged<LocationModel> onSelect;
 
   const _NavSearchResultsList({
     required this.colors,
+    required this.searchTerm,
     required this.results,
     required this.onSelect,
   });
@@ -1052,28 +1349,44 @@ class _NavSearchResultsList extends StatelessWidget {
           ),
         ],
       ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        itemCount: results.length,
-        separatorBuilder: (_, __) => Divider(height: 1, color: colors.line),
-        itemBuilder: (context, index) {
-          final site = results[index];
-          return ListTile(
-            dense: true,
-            leading: Icon(Icons.place_outlined, size: 18, color: colors.forest),
-            title: Text(
-              site.name,
-              style: TextStyle(fontSize: 13, color: colors.ink),
+      child: results.isEmpty
+          ? Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              child: Center(
+                child: Text(
+                  'No results for "$searchTerm"',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: colors.muted, fontSize: 13),
+                ),
+              ),
+            )
+          : ListView.separated(
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              itemCount: results.length,
+              separatorBuilder: (_, __) =>
+                  Divider(height: 1, color: colors.line),
+              itemBuilder: (context, index) {
+                final site = results[index];
+                return ListTile(
+                  dense: true,
+                  leading: Icon(
+                    Icons.place_outlined,
+                    size: 18,
+                    color: colors.forest,
+                  ),
+                  title: Text(
+                    site.name,
+                    style: TextStyle(fontSize: 13, color: colors.ink),
+                  ),
+                  subtitle: Text(
+                    site.category,
+                    style: TextStyle(fontSize: 11, color: colors.muted),
+                  ),
+                  onTap: () => onSelect(site),
+                );
+              },
             ),
-            subtitle: Text(
-              site.category,
-              style: TextStyle(fontSize: 11, color: colors.muted),
-            ),
-            onTap: () => onSelect(site),
-          );
-        },
-      ),
     );
   }
 }
@@ -1198,6 +1511,12 @@ class _LiveUpdateCard extends StatelessWidget {
         return Icons.touch_app_outlined;
       case AccessibilityType.ramps:
         return Icons.accessible_rounded;
+      case AccessibilityType.restAreas:
+        return Icons.chair_outlined;
+      case AccessibilityType.pwdSeniorPriority:
+        return Icons.accessible_forward_rounded;
+      case AccessibilityType.audioDescribedDirections:
+        return Icons.record_voice_over_outlined;
       default:
         return Icons.info_outline;
     }
@@ -1262,6 +1581,150 @@ class _LiveUpdateCard extends StatelessWidget {
   }
 }
 
+// ─── Map Back Button ────────────────────────────────────────────────────────
+// Floating circular back control for active-navigation mode (addendum spec
+// 2.1) — this screen has no AppBar, so the back affordance is styled as a
+// floating circular button matching this screen's other map controls
+// (recenter button, layer toggle) instead of an AppBar's leading icon.
+
+class _MapBackButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _MapBackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.arrow_back_rounded,
+          color: Color(0xFF1C4034),
+          size: 20,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Explore POI Map Button ─────────────────────────────────────────────────
+// Entry point into the standalone OsmPoiMapScreen (OSM POI browser + real
+// walking-route lookup via OpenRouteService) — additive, doesn't replace
+// this screen's own live-GPS turn-by-turn guidance flow.
+
+class _ExplorePoiMapButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ExplorePoiMapButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF050505),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.travel_explore_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text(
+              'Explore POIs',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Map Layer Toggle Button ────────────────────────────────────────────────
+// Standard/satellite view switch, wired to GoogleMap's native `mapType`
+// property. Visually matches the app's existing black accessibility-mode
+// pill style (`_AccessibilityModeButton`), sized down for a floating map
+// control.
+
+class _MapLayerToggleButton extends StatelessWidget {
+  final bool isSatelliteView;
+  final VoidCallback onToggle;
+
+  const _MapLayerToggleButton({
+    required this.isSatelliteView,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF050505),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSatelliteView
+                  ? Icons.map_outlined
+                  : Icons.satellite_alt_outlined,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isSatelliteView ? 'Standard' : 'Satellite',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Accessibility Mode Button ──────────────────────────────────────────────────
 // Black pill in the branch design; turns a soft mint when active.
 
@@ -1284,7 +1747,7 @@ class _AccessibilityModeButton extends StatelessWidget {
       onTap: onToggle,
       child: Container(
         constraints: const BoxConstraints(minHeight: 70),
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFE1EEE5) : const Color(0xFF050505),
           borderRadius: BorderRadius.circular(24),
@@ -1298,14 +1761,18 @@ class _AccessibilityModeButton extends StatelessWidget {
             Icon(
               icon,
               color: isActive ? AppTheme.forest : Colors.white,
-              size: 26,
+              size: 24,
             ),
-            const SizedBox(width: 14),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: isActive ? AppTheme.forest : Colors.white,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isActive ? AppTheme.forest : Colors.white,
+                ),
               ),
             ),
           ],
