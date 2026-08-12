@@ -8,6 +8,21 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
+        <!--
+          Google Maps SDK for Android API key (used by google_maps_flutter in
+          OsmPoiMapScreen). Fill in your own key from the Google Cloud Console
+          (Maps SDK for Android enabled, billing attached) — never commit a
+          real key to a public repo. Each teammate should use their own key
+          for local builds; do not share one key across the team in source
+          control. Leaving this as the placeholder value is safe: the app
+          detects the resulting map-load failure and shows a graceful
+          "Map unavailable" fallback instead of crashing (see
+          lib/screens/osm_poi_map_screen.dart).
+        -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="YOUR_GOOGLE_MAPS_API_KEY_HERE" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -11,8 +11,10 @@ import '../services/gate_selection_service.dart';
 import '../services/gate_service.dart';
 import '../services/location_service.dart';
 import '../services/walking_path_service.dart';
+import '../services/accessibility_settings_service.dart';
 import '../widgets/location_photo.dart';
 import 'location_details_screen.dart';
+import 'osm_poi_map_screen.dart';
 
 /// Navigation screen. Visual language (route-card overlay, recenter button,
 /// Live Updates list, black accessibility-mode pills) is ported from the
@@ -65,6 +67,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
   bool _vegetarianMode = true;
   bool _brailleVoiceMode = true;
   bool _rampsMode = true;
+
+  // 3 additional confirmed modes (addendum spec Section 4.2) — default to
+  // active, matching the existing three's default-on behavior.
+  bool _restAreasMode = true;
+  bool _pwdSeniorPriorityMode = true;
+  bool _audioDescribedDirectionsMode = true;
 
   final List<_LiveUpdate> _liveUpdates = [];
 
@@ -165,6 +173,36 @@ class _NavigationScreenState extends State<NavigationScreen> {
         ),
       );
     }
+    if (_restAreasMode) {
+      _liveUpdates.add(
+        const _LiveUpdate(
+          title: 'Rest Areas & Seating',
+          subtitle: '2 benches — 40m ahead',
+          type: AccessibilityType.restAreas,
+          isActive: true,
+        ),
+      );
+    }
+    if (_pwdSeniorPriorityMode) {
+      _liveUpdates.add(
+        const _LiveUpdate(
+          title: 'PWD & Senior Priority',
+          subtitle: 'Priority assistance available on request',
+          type: AccessibilityType.pwdSeniorPriority,
+          isActive: true,
+        ),
+      );
+    }
+    if (_audioDescribedDirectionsMode) {
+      _liveUpdates.add(
+        const _LiveUpdate(
+          title: 'Audio-Described Directions',
+          subtitle: 'Narrated turn-by-turn active',
+          type: AccessibilityType.audioDescribedDirections,
+          isActive: true,
+        ),
+      );
+    }
   }
 
   bool _isModeActive(AccessibilityType type) {
@@ -175,6 +213,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
         return _rampsMode;
       case AccessibilityType.brailleVoice:
         return _brailleVoiceMode;
+      case AccessibilityType.restAreas:
+        return _restAreasMode;
+      case AccessibilityType.pwdSeniorPriority:
+        return _pwdSeniorPriorityMode;
+      case AccessibilityType.audioDescribedDirections:
+        return _audioDescribedDirectionsMode;
       default:
         return true;
     }
@@ -809,6 +853,15 @@ class _NavigationScreenState extends State<NavigationScreen> {
                       setState(() => _isSatelliteView = !_isSatelliteView),
                 ),
               ),
+              Positioned(
+                bottom: 14,
+                left: 20,
+                child: _ExplorePoiMapButton(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const OsmPoiMapScreen()),
+                  ),
+                ),
+              ),
               _buildPinPopupOverlay(),
               // Persistent search bar + filter chip row (always visible,
               // per spec: not tap-to-reveal).
@@ -890,10 +943,23 @@ class _NavigationScreenState extends State<NavigationScreen> {
                       setState(() => _isSatelliteView = !_isSatelliteView),
                 ),
               ),
-              _buildPinPopupOverlay(),
-              // Turn-by-turn route card overlay
+              // Back button (addendum spec 2.1) — this screen has no
+              // AppBar of its own (full-bleed map + floating controls), so
+              // the back affordance is a floating circular button matching
+              // the style of the other floating map controls on this
+              // screen, rather than the "‹" text-link pattern used on
+              // scrollable-content screens elsewhere in the app. Placed
+              // above the turn-by-turn route card so the two don't overlap.
               Positioned(
                 top: MediaQuery.of(context).padding.top + 12,
+                left: 20,
+                child: _MapBackButton(
+                  onTap: () => Navigator.maybePop(context),
+                ),
+              ),
+              _buildPinPopupOverlay(),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 64,
                 left: 24,
                 right: 24,
                 child: Container(
@@ -1005,7 +1071,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
               Positioned(
                 top:
                     MediaQuery.of(context).padding.top +
-                    (_isOffRoute ? 190 : 148),
+                    (_isOffRoute ? 242 : 200),
                 right: 17,
                 child: GestureDetector(
                   onTap: _recenterOnRoute,
@@ -1042,13 +1108,24 @@ class _NavigationScreenState extends State<NavigationScreen> {
   // ─── Shared "Live Updates" / "Accessibility Modes" panel ──────────────────
 
   Widget _buildAccessibilityPanel(AppColors colors) {
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 280),
-      curve: Curves.easeInOut,
-      alignment: Alignment.topCenter,
-      child: _isPanelExpanded
-          ? _buildExpandedPanelContent(colors)
-          : _buildCollapsedPanelBar(colors),
+    return AnimatedBuilder(
+      animation: AccessibilitySettingsService.instance,
+      builder: (context, _) {
+        // Addendum spec 4.2: when Accessibility Support is OFF in Settings,
+        // the entire Live Updates / Accessibility Modes panel is hidden
+        // from the Navigate flow rather than just disabling its contents.
+        if (!AccessibilitySettingsService.instance.isEnabled) {
+          return const SizedBox.shrink();
+        }
+        return AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: _isPanelExpanded
+              ? _buildExpandedPanelContent(colors)
+              : _buildCollapsedPanelBar(colors),
+        );
+      },
     );
   }
 
@@ -1059,7 +1136,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// [Expanded] requires a [Flex] ancestor, which [AnimatedSize] isn't.
   Widget _buildExpandedPanelContent(AppColors colors) {
     return SizedBox(
-      height: 340,
+      height: 460,
       child: Container(
         decoration: BoxDecoration(
           color: colors.card,
@@ -1139,41 +1216,89 @@ class _NavigationScreenState extends State<NavigationScreen> {
                         style: TextStyle(fontSize: 12, color: colors.muted),
                       ),
                     ),
-                    _AccessibilityModeButton(
-                      icon: Icons.restaurant_outlined,
-                      label: 'Vegetarian',
-                      isActive: _vegetarianMode,
-                      onToggle: () => setState(() {
-                        _vegetarianMode = !_vegetarianMode;
-                        _rebuildLiveUpdates();
-                      }),
-                    ),
-                    const SizedBox(height: 10),
-                    _AccessibilityModeButton(
-                      icon: Icons.touch_app_outlined,
-                      label: 'Braille / Voice',
-                      isActive: _brailleVoiceMode,
-                      onToggle: () {
-                        setState(() {
-                          _brailleVoiceMode = !_brailleVoiceMode;
-                          _rebuildLiveUpdates();
-                        });
-                        if (_brailleVoiceMode) {
-                          _ttsService.speak('Voice mode activated');
-                        } else {
-                          _ttsService.stop();
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                    _AccessibilityModeButton(
-                      icon: Icons.accessible_rounded,
-                      label: 'Ramps & Elevators',
-                      isActive: _rampsMode,
-                      onToggle: () => setState(() {
-                        _rampsMode = !_rampsMode;
-                        _rebuildLiveUpdates();
-                      }),
+                    // Two-column grid (addendum spec 4.2) — same button
+                    // styling as before, just reflowed from a vertical
+                    // stack into a 2-across grid to fit all 6 modes.
+                    GridView.count(
+                      crossAxisCount: 2,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      mainAxisSpacing: 10,
+                      crossAxisSpacing: 10,
+                      childAspectRatio: 1.35,
+                      children: [
+                        _AccessibilityModeButton(
+                          icon: Icons.restaurant_outlined,
+                          label: 'Vegetarian',
+                          isActive: _vegetarianMode,
+                          onToggle: () => setState(() {
+                            _vegetarianMode = !_vegetarianMode;
+                            _rebuildLiveUpdates();
+                          }),
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.touch_app_outlined,
+                          label: 'Braille / Voice',
+                          isActive: _brailleVoiceMode,
+                          onToggle: () {
+                            setState(() {
+                              _brailleVoiceMode = !_brailleVoiceMode;
+                              _rebuildLiveUpdates();
+                            });
+                            if (_brailleVoiceMode) {
+                              _ttsService.speak('Voice mode activated');
+                            } else {
+                              _ttsService.stop();
+                            }
+                          },
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.accessible_rounded,
+                          label: 'Ramps & Elevators',
+                          isActive: _rampsMode,
+                          onToggle: () => setState(() {
+                            _rampsMode = !_rampsMode;
+                            _rebuildLiveUpdates();
+                          }),
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.chair_outlined,
+                          label: 'Rest Areas & Seating Nearby',
+                          isActive: _restAreasMode,
+                          onToggle: () => setState(() {
+                            _restAreasMode = !_restAreasMode;
+                            _rebuildLiveUpdates();
+                          }),
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.accessible_forward_rounded,
+                          label: 'PWD & Senior Priority Assistance',
+                          isActive: _pwdSeniorPriorityMode,
+                          onToggle: () => setState(() {
+                            _pwdSeniorPriorityMode = !_pwdSeniorPriorityMode;
+                            _rebuildLiveUpdates();
+                          }),
+                        ),
+                        _AccessibilityModeButton(
+                          icon: Icons.record_voice_over_outlined,
+                          label: 'Audio-Described Directions',
+                          isActive: _audioDescribedDirectionsMode,
+                          onToggle: () {
+                            setState(() {
+                              _audioDescribedDirectionsMode =
+                                  !_audioDescribedDirectionsMode;
+                              _rebuildLiveUpdates();
+                            });
+                            if (_audioDescribedDirectionsMode) {
+                              _ttsService.speak(
+                                'Audio-described directions activated',
+                              );
+                            } else {
+                              _ttsService.stop();
+                            }
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1506,6 +1631,12 @@ class _LiveUpdateCard extends StatelessWidget {
         return Icons.touch_app_outlined;
       case AccessibilityType.ramps:
         return Icons.accessible_rounded;
+      case AccessibilityType.restAreas:
+        return Icons.chair_outlined;
+      case AccessibilityType.pwdSeniorPriority:
+        return Icons.accessible_forward_rounded;
+      case AccessibilityType.audioDescribedDirections:
+        return Icons.record_voice_over_outlined;
       default:
         return Icons.info_outline;
     }
@@ -1655,6 +1786,92 @@ class _LocationPinPopup extends StatelessWidget {
   }
 }
 
+// ─── Map Back Button ────────────────────────────────────────────────────────
+// Floating circular back control for active-navigation mode (addendum spec
+// 2.1) — this screen has no AppBar, so the back affordance is styled as a
+// floating circular button matching this screen's other map controls
+// (recenter button, layer toggle) instead of an AppBar's leading icon.
+
+class _MapBackButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _MapBackButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.arrow_back_rounded,
+          color: Color(0xFF1C4034),
+          size: 20,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Explore POI Map Button ─────────────────────────────────────────────────
+// Entry point into the standalone OsmPoiMapScreen (OSM POI browser + real
+// walking-route lookup via OpenRouteService) — additive, doesn't replace
+// this screen's own live-GPS turn-by-turn guidance flow.
+
+class _ExplorePoiMapButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ExplorePoiMapButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF050505),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.travel_explore_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text(
+              'Explore POIs',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Map Layer Toggle Button ────────────────────────────────────────────────
 // Standard/satellite tile switch. Visually matches the app's existing
 // black accessibility-mode pill style (`_AccessibilityModeButton`), sized
@@ -1734,7 +1951,7 @@ class _AccessibilityModeButton extends StatelessWidget {
       onTap: onToggle,
       child: Container(
         constraints: const BoxConstraints(minHeight: 70),
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isActive ? const Color(0xFFE1EEE5) : const Color(0xFF050505),
           borderRadius: BorderRadius.circular(24),
@@ -1748,14 +1965,18 @@ class _AccessibilityModeButton extends StatelessWidget {
             Icon(
               icon,
               color: isActive ? AppTheme.forest : Colors.white,
-              size: 26,
+              size: 24,
             ),
-            const SizedBox(width: 14),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: isActive ? AppTheme.forest : Colors.white,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isActive ? AppTheme.forest : Colors.white,
+                ),
               ),
             ),
           ],

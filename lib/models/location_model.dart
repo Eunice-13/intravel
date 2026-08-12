@@ -289,6 +289,18 @@ enum AccessibilityType {
   vegetarian,
   restroom,
   parking,
+
+  /// Rest areas / seating available nearby (addendum spec Section 4.2,
+  /// new mode #4 of 6).
+  restAreas,
+
+  /// Priority assistance for persons with disabilities and senior
+  /// citizens (addendum spec Section 4.2, new mode #5 of 6).
+  pwdSeniorPriority,
+
+  /// Turn-by-turn directions narrated with extra descriptive detail for
+  /// low-vision users (addendum spec Section 4.2, new mode #6 of 6).
+  audioDescribedDirections,
 }
 
 class NearbyAmenity {

@@ -38,7 +38,7 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
       HomeScreen(onOpenPlans: () => _goToTab(2)),
       const NavigationScreen(),
       const PlansScreen(),
-      ProfileScreen(onOpenAccessibility: () => _goToTab(1)),
+      const ProfileScreen(),
     ];
 
     return Scaffold(

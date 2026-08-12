@@ -1,0 +1,156 @@
+{
+  "_comment": "OSM POIs for the Intramuros demo, fetched via Overpass API by tool/fetch_pois.dart (see bbox below) and then curated by hand: deduplicated near-identical node/way pairs for the same landmark, dropped unnamed/low-value historic markers to keep the demo focused, and paired each entry with a photoPath (local asset where the app already has one, otherwise a Wikimedia Commons URL) since OSM itself has no photo data. photoPath values are preserved across re-runs of tool/fetch_pois.dart by OSM id. Never fetched live at runtime -- see lib/services/poi_service.dart.",
+  "generatedAt": "2026-08-13T02:16:53.865029",
+  "bbox": {
+    "south": 14.583,
+    "west": 120.97,
+    "north": 14.596,
+    "east": 120.98
+  },
+  "pois": [
+    {
+      "id": "way/828670532",
+      "name": "Fort Santiago",
+      "category": "historic",
+      "lat": 14.594473,
+      "lng": 120.970056,
+      "photoPath": "assets/intravel/assets/home/fort-santiago.jpg"
+    },
+    {
+      "id": "way/331777144",
+      "name": "Manila Cathedral",
+      "category": "church",
+      "lat": 14.5915057,
+      "lng": 120.9736106,
+      "photoPath": "assets/intravel/assets/home/manila-cathedral.jpg"
+    },
+    {
+      "id": "way/89571506",
+      "name": "San Agustin Church",
+      "category": "church",
+      "lat": 14.5889152,
+      "lng": 120.975345,
+      "photoPath": "assets/intravel/assets/home/san-agustin-church.jpg"
+    },
+    {
+      "id": "way/331628854",
+      "name": "Baluarte de San Diego",
+      "category": "historic",
+      "lat": 14.5853905,
+      "lng": 120.9756463,
+      "photoPath": "assets/intravel/assets/home/baluarte-de-san-diego.jpg"
+    },
+    {
+      "id": "node/10699319606",
+      "name": "Casa Manila",
+      "category": "attraction",
+      "lat": 14.5897328,
+      "lng": 120.9752501,
+      "photoPath": "assets/intravel/assets/home/casa-manila.jpg"
+    },
+    {
+      "id": "node/1038225360",
+      "name": "Ayuntamiento de Manila (Casas Consistoriales)",
+      "category": "historic",
+      "lat": 14.5925078,
+      "lng": 120.9733269,
+      "photoPath": "assets/intravel/assets/home/ayuntamiento.jpg"
+    },
+    {
+      "id": "node/12284519950",
+      "name": "Pasig River Esplanade",
+      "category": "attraction",
+      "lat": 14.595868,
+      "lng": 120.9782951,
+      "photoPath": "assets/intravel/assets/home/ia-pasig-esplanade.jpg"
+    },
+    {
+      "id": "way/83591315",
+      "name": "Manila High School",
+      "category": "school",
+      "lat": 14.5890231,
+      "lng": 120.978421,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Manila_High_School_Facade.JPG"
+    },
+    {
+      "id": "way/89564506",
+      "name": "LPU Culinary Institute",
+      "category": "school",
+      "lat": 14.5897362,
+      "lng": 120.9785149,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/4/4a/Lyceum_of_the_Philippines_University_Manila_Facade.jpg"
+    },
+    {
+      "id": "node/10148591105",
+      "name": "Unibersidad ng Santo Tomas (Intramuros)",
+      "category": "school",
+      "lat": 14.5929505,
+      "lng": 120.9746869,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/8/8a/UST_Main_Building.jpg"
+    },
+    {
+      "id": "way/267201806",
+      "name": "Joy Student Center",
+      "category": "church",
+      "lat": 14.590189,
+      "lng": 120.9760698,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/e/ee/Placeholder_church.jpg"
+    },
+    {
+      "id": "way/829052700",
+      "name": "San Ignacio Church (Ruins)",
+      "category": "historic",
+      "lat": 14.5900429,
+      "lng": 120.9731279,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/1/16/San_Ignacio_Church_ruins%2C_Intramuros.jpg"
+    },
+    {
+      "id": "way/1193157079",
+      "name": "Rizal Park Musical Dancing Fountain",
+      "category": "attraction",
+      "lat": 14.5828165,
+      "lng": 120.9788626,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/4/4d/Rizal_Park_Dancing_Fountain.jpg"
+    },
+    {
+      "id": "way/1038058961",
+      "name": "Flower Clock",
+      "category": "attraction",
+      "lat": 14.5832692,
+      "lng": 120.9796747,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/6/6a/Rizal_Park_Flower_Clock.jpg"
+    },
+    {
+      "id": "way/3388716896",
+      "name": "Jose Rizal Monument",
+      "category": "historic",
+      "lat": 14.5866169,
+      "lng": 120.9774057,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/4/4e/Rizal_Monument_Luneta.jpg"
+    },
+    {
+      "id": "way/331675588",
+      "name": "Puerta de Santa Lucia",
+      "category": "historic",
+      "lat": 14.5885025,
+      "lng": 120.9737136,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Puerta_de_Santa_Lucia.JPG"
+    },
+    {
+      "id": "way/828320204",
+      "name": "Puerta del Parian",
+      "category": "historic",
+      "lat": 14.592246,
+      "lng": 120.9781972,
+      "photoPath": "https://upload.wikimedia.org/wikipedia/commons/9/9b/Puerta_del_Parian.jpg"
+    },
+    {
+      "id": "way/331784458",
+      "name": "Fort Santiago Gate",
+      "category": "attraction",
+      "lat": 14.593865,
+      "lng": 120.9707241,
+      "photoPath": "assets/intravel/assets/home/fort-santiago.jpg"
+    }
+  ]
+}
