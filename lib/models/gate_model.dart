@@ -1,4 +1,4 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 /// Classification shown as the small label on each gate card, matching the
 /// spec's "historical vs. modern opening" distinction.

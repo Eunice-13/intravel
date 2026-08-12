@@ -5,6 +5,7 @@ import '../services/gate_selection_service.dart';
 import '../services/gate_service.dart';
 import 'favorites_screen.dart';
 import 'gate_selection_screen.dart';
+import 'reviewable_locations_screen.dart';
 
 /// Settings screen, ported from the Eunice-branch `#screen-profile` markup:
 /// guest sign-in card, weather card, Dark Mode toggle (wired to the app-wide
@@ -243,6 +244,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const FavoritesScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 15),
+                  _SettingRow(
+                    colors: colors,
+                    label: 'Reviews',
+                    trailing: Text(
+                      '›',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w300,
+                        color: colors.muted,
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const ReviewableLocationsScreen(),
                         ),
                       );
                     },

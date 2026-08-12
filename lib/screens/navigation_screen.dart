@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import '../theme/app_theme.dart';
 import '../models/location_model.dart';
@@ -10,6 +11,7 @@ import '../services/gate_selection_service.dart';
 import '../services/gate_service.dart';
 import '../services/location_service.dart';
 import '../services/walking_path_service.dart';
+import '../widgets/location_photo.dart';
 import 'location_details_screen.dart';
 
 /// Navigation screen. Visual language (route-card overlay, recenter button,
@@ -43,11 +45,21 @@ class NavigationScreen extends StatefulWidget {
 }
 
 class _NavigationScreenState extends State<NavigationScreen> {
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
+  bool _isSatelliteView = false;
+  bool _isPanelExpanded = true;
   final TtsService _ttsService = TtsService();
   Position? _currentPosition;
   LocationModel? _targetLocation;
   StreamSubscription<Position>? _positionStream;
+
+  /// The location whose photo+name popup is currently shown above its pin
+  /// (spec Section 5) — set by tapping any marker that has an associated
+  /// [LocationModel] (target, browse-mode filtered pins, focused search
+  /// result); cleared by tapping the popup itself, another pin, or the map
+  /// background. Not used for the "You are here" marker, which has no
+  /// associated location record/photo.
+  LocationModel? _selectedPinLocation;
 
   // Accessibility toggles — mirrors the branch's three default-active modes.
   bool _vegetarianMode = true;
@@ -101,7 +113,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
   @override
   void dispose() {
     _positionStream?.cancel();
-    _mapController?.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -223,9 +234,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
       _searchController.text = site.name;
       _searchTerm = '';
     });
-    _mapController?.animateCamera(
-      CameraUpdate.newLatLngZoom(site.coordinates, 17),
-    );
+    _mapController.move(site.coordinates, 17);
   }
 
   void _clearSearch() {
@@ -258,30 +267,20 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
   // ─── Turn-by-turn routing math (straight-line, no live Directions API) ────
 
-  Set<Marker> _buildMarkers() {
-    final markers = <Marker>{};
+  List<Marker> _buildMarkers() {
+    final markers = <Marker>[];
     if (_targetLocation != null) {
-      markers.add(
-        Marker(
-          markerId: MarkerId(_targetLocation!.id),
-          position: _targetLocation!.coordinates,
-          infoWindow: InfoWindow(title: _targetLocation!.name),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            BitmapDescriptor.hueGreen,
-          ),
-        ),
-      );
+      markers.add(_locationPinMarker(_targetLocation!, color: _hueToColor(_HueColors.green)));
     }
     if (_currentPosition != null) {
       markers.add(
-        Marker(
-          markerId: const MarkerId('current'),
-          position: LatLng(
+        _pinMarker(
+          point: LatLng(
             _currentPosition!.latitude,
             _currentPosition!.longitude,
           ),
-          infoWindow: const InfoWindow(title: 'You are here'),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+          color: _hueToColor(_HueColors.blue),
+          onTap: () => _showMarkerInfo(title: 'You are here'),
         ),
       );
     }
@@ -290,15 +289,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
         if (feature.location == null) continue;
         if (_isModeActive(feature.type)) {
           markers.add(
-            Marker(
-              markerId: MarkerId(feature.id),
-              position: feature.location!,
-              infoWindow: InfoWindow(
+            _pinMarker(
+              point: feature.location!,
+              color: _hueToColor(_getMarkerHue(feature.type)),
+              onTap: () => _showMarkerInfo(
                 title: feature.name,
                 snippet: feature.description,
-              ),
-              icon: BitmapDescriptor.defaultMarkerWithHue(
-                _getMarkerHue(feature.type),
               ),
             ),
           );
@@ -310,39 +306,99 @@ class _NavigationScreenState extends State<NavigationScreen> {
     if (_isBrowseMode) {
       for (final site in _filteredCategoryLocations) {
         markers.add(
-          Marker(
-            markerId: MarkerId('filter-${site.id}'),
-            position: site.coordinates,
-            infoWindow: InfoWindow(
-              title: site.name,
-              snippet: site.category,
-              onTap: () => _openLocationDetails(site),
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              _getCategoryMarkerHue(site.category),
-            ),
+          _locationPinMarker(
+            site,
+            color: _hueToColor(_getCategoryMarkerHue(site.category)),
           ),
         );
       }
       if (_focusedSearchResult != null) {
-        final site = _focusedSearchResult!;
         markers.add(
-          Marker(
-            markerId: MarkerId('search-${site.id}'),
-            position: site.coordinates,
-            infoWindow: InfoWindow(
-              title: site.name,
-              snippet: 'Tap for details',
-              onTap: () => _openLocationDetails(site),
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueRose,
-            ),
+          _locationPinMarker(
+            _focusedSearchResult!,
+            color: _hueToColor(_HueColors.rose),
           ),
         );
       }
     }
     return markers;
+  }
+
+  /// Builds a flutter_map [Marker] for a location pin (spec Section 5):
+  /// tapping it shows [_selectedPinLocation]'s photo+name popup above the
+  /// pin (see [_LocationPinPopup]) instead of google_maps_flutter's
+  /// text-only `InfoWindow`, which can't display an image. Used for every
+  /// marker that has an associated [LocationModel] — target location,
+  /// browse-mode filtered pins, and the focused search result — but not
+  /// the "You are here" current-position marker, which has no location
+  /// record/photo of its own (see [_pinMarker] for that one).
+  Marker _locationPinMarker(LocationModel location, {required Color color}) {
+    return _pinMarker(
+      point: location.coordinates,
+      color: color,
+      onTap: () => setState(() => _selectedPinLocation = location),
+    );
+  }
+
+  /// Builds a single flutter_map [Marker] rendered as a colored pin icon.
+  /// [onTap] replaces google_maps_flutter's `InfoWindow`/`InfoWindow.onTap`
+  /// — flutter_map has no built-in info-bubble widget, so tapping a marker
+  /// either opens details directly (matching the original `onTap` pins) or
+  /// shows a bottom sheet with the same title/snippet text the InfoWindow
+  /// used to display (see `_showMarkerInfo`).
+  Marker _pinMarker({
+    required LatLng point,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Marker(
+      point: point,
+      width: 40,
+      height: 40,
+      alignment: Alignment.topCenter,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Icon(
+          Icons.location_on,
+          color: color,
+          size: 40,
+        ),
+      ),
+    );
+  }
+
+  /// Shows the same title/snippet text an `InfoWindow` bubble used to
+  /// display, in a bottom sheet — flutter_map has no inline map-anchored
+  /// info-bubble equivalent (see migration note on [_pinMarker]). Still
+  /// used for accessibility-feature markers, which have no associated
+  /// [LocationModel]/photo and so don't qualify for [_LocationPinPopup]
+  /// (spec Section 5 only covers markers that represent a real location).
+  void _showMarkerInfo({required String title, String? snippet}) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (snippet != null) ...[
+                const SizedBox(height: 6),
+                Text(snippet, style: const TextStyle(fontSize: 13)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openLocationDetails(LocationModel site) {
@@ -351,31 +407,139 @@ class _NavigationScreenState extends State<NavigationScreen> {
     );
   }
 
-  double _getCategoryMarkerHue(String category) {
+  /// The floating photo+name popup for [_selectedPinLocation] (spec
+  /// Section 5), positioned above whichever pin was tapped by converting
+  /// its map coordinate to a screen offset via [MapCamera]. Rebuilds on
+  /// every map event so the popup tracks the pin as the user pans/zooms;
+  /// returns an empty widget when no pin is selected. Insert this as the
+  /// last child of each mode's map [Stack] so it floats above the
+  /// [FlutterMap] and its other overlays.
+  Widget _buildPinPopupOverlay() {
+    final selected = _selectedPinLocation;
+    if (selected == null) return const SizedBox.shrink();
+    return StreamBuilder<MapEvent>(
+      stream: _mapController.mapEventStream,
+      builder: (context, _) {
+        // Uses the controller's own `camera` getter rather than
+        // `MapCamera.of(context)` — this widget is placed as a sibling of
+        // `FlutterMap` in the enclosing `Stack`, not inside its
+        // `children`, so there's no `FlutterMap` ancestor in this
+        // context for `MapCamera.of` to find (it throws a `StateError`
+        // otherwise). `_mapController.camera` needs no such ancestor.
+        final camera = _mapController.camera;
+        final offset = camera.latLngToScreenOffset(selected.coordinates);
+        return Positioned(
+          left: offset.dx - 90,
+          top: offset.dy - 108,
+          child: _LocationPinPopup(
+            location: selected,
+            onTap: () {
+              setState(() => _selectedPinLocation = null);
+              _openLocationDetails(selected);
+            },
+            onClose: () => setState(() => _selectedPinLocation = null),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Renders the user's live position as a blue dot, replacing
+  /// google_maps_flutter's built-in `myLocationEnabled` blue-dot layer —
+  /// flutter_map has no built-in "my location" layer, so it's driven
+  /// directly from the same geolocator position stream used elsewhere on
+  /// this screen (unchanged).
+  Marker _currentPositionMarker() {
+    return Marker(
+      point: LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+      width: 22,
+      height: 22,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xFF4285F4),
+          border: Border.all(color: Colors.white, width: 3),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 4,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The active base tile layer — OpenStreetMap standard tiles, or Esri
+  /// World Imagery satellite tiles when [_isSatelliteView] is toggled on.
+  /// Both are free, keyless tile sources (no Google Maps billing
+  /// dependency).
+  TileLayer _tileLayer() {
+    if (_isSatelliteView) {
+      return TileLayer(
+        urlTemplate:
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        userAgentPackageName: 'com.example.intravel',
+      );
+    }
+    return TileLayer(
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      userAgentPackageName: 'com.example.intravel',
+      subdomains: const [],
+    );
+  }
+
+  _HueColors _getCategoryMarkerHue(String category) {
     switch (category) {
       case 'Fortifications':
-        return BitmapDescriptor.hueRed;
+        return _HueColors.red;
       case 'Landmarks':
-        return BitmapDescriptor.hueOrange;
+        return _HueColors.orange;
       case 'Schools':
-        return BitmapDescriptor.hueYellow;
+        return _HueColors.yellow;
       case 'Parks':
-        return BitmapDescriptor.hueGreen;
+        return _HueColors.green;
       default:
-        return BitmapDescriptor.hueAzure;
+        return _HueColors.azure;
     }
   }
 
-  double _getMarkerHue(AccessibilityType type) {
+  _HueColors _getMarkerHue(AccessibilityType type) {
     switch (type) {
       case AccessibilityType.vegetarian:
-        return BitmapDescriptor.hueGreen;
+        return _HueColors.green;
       case AccessibilityType.ramps:
-        return BitmapDescriptor.hueViolet;
+        return _HueColors.violet;
       case AccessibilityType.brailleVoice:
-        return BitmapDescriptor.hueOrange;
+        return _HueColors.orange;
       default:
-        return BitmapDescriptor.hueRed;
+        return _HueColors.red;
+    }
+  }
+
+  /// Maps the marker "hue" categories this screen used with
+  /// `BitmapDescriptor.defaultMarkerWithHue` to concrete pin colors for the
+  /// flutter_map `Icon`-based markers (flutter_map has no built-in
+  /// hue-tinted default-pin equivalent, so colors are chosen to closely
+  /// match each named Google Maps hue).
+  Color _hueToColor(_HueColors hue) {
+    switch (hue) {
+      case _HueColors.green:
+        return const Color(0xFF34A853);
+      case _HueColors.blue:
+        return const Color(0xFF4285F4);
+      case _HueColors.red:
+        return const Color(0xFFEA4335);
+      case _HueColors.orange:
+        return const Color(0xFFFF9800);
+      case _HueColors.yellow:
+        return const Color(0xFFFBBC04);
+      case _HueColors.violet:
+        return const Color(0xFF8E24AA);
+      case _HueColors.azure:
+        return const Color(0xFF4FC3F7);
+      case _HueColors.rose:
+        return const Color(0xFFE91E63);
     }
   }
 
@@ -470,23 +634,22 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// route-start — a stable reference the user can be measured as deviating
   /// from, unlike a line that redraws from the live position every update
   /// (which could never register as off-route).
-  Set<Polyline> _buildRouteLine() {
-    if (_routeStartPosition == null || _targetLocation == null) return {};
+  List<Polyline> _buildRouteLine() {
+    if (_routeStartPosition == null || _targetLocation == null) return [];
     final start = LatLng(
       _routeStartPosition!.latitude,
       _routeStartPosition!.longitude,
     );
     final end = _targetLocation!.coordinates;
     final pathWaypoints = WalkingPathService().findPath(start, end);
-    return {
+    return [
       Polyline(
-        polylineId: const PolylineId('active-route'),
         points: pathWaypoints ?? [start, end],
         color: AppTheme.accent,
-        width: 5,
-        patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+        strokeWidth: 5,
+        pattern: StrokePattern.dashed(segments: [20.0, 10.0]),
       ),
-    };
+    ];
   }
 
   /// Perpendicular distance in meters from [point] to the straight line
@@ -557,35 +720,30 @@ class _NavigationScreenState extends State<NavigationScreen> {
     if (_targetLocation == null) return;
     if (_currentPosition != null) {
       _routeStartPosition = _currentPosition;
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngBounds(
-          LatLngBounds(
-            southwest: LatLng(
-              _currentPosition!.latitude < _targetLocation!.coordinates.latitude
-                  ? _currentPosition!.latitude
-                  : _targetLocation!.coordinates.latitude,
-              _currentPosition!.longitude <
-                      _targetLocation!.coordinates.longitude
-                  ? _currentPosition!.longitude
-                  : _targetLocation!.coordinates.longitude,
-            ),
-            northeast: LatLng(
-              _currentPosition!.latitude > _targetLocation!.coordinates.latitude
-                  ? _currentPosition!.latitude
-                  : _targetLocation!.coordinates.latitude,
-              _currentPosition!.longitude >
-                      _targetLocation!.coordinates.longitude
-                  ? _currentPosition!.longitude
-                  : _targetLocation!.coordinates.longitude,
-            ),
-          ),
-          80,
+      final southWest = LatLng(
+        _currentPosition!.latitude < _targetLocation!.coordinates.latitude
+            ? _currentPosition!.latitude
+            : _targetLocation!.coordinates.latitude,
+        _currentPosition!.longitude < _targetLocation!.coordinates.longitude
+            ? _currentPosition!.longitude
+            : _targetLocation!.coordinates.longitude,
+      );
+      final northEast = LatLng(
+        _currentPosition!.latitude > _targetLocation!.coordinates.latitude
+            ? _currentPosition!.latitude
+            : _targetLocation!.coordinates.latitude,
+        _currentPosition!.longitude > _targetLocation!.coordinates.longitude
+            ? _currentPosition!.longitude
+            : _targetLocation!.coordinates.longitude,
+      );
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds(southWest, northEast),
+          padding: const EdgeInsets.all(80),
         ),
       );
     } else {
-      _mapController?.animateCamera(
-        CameraUpdate.newLatLngZoom(_targetLocation!.coordinates, 16),
-      );
+      _mapController.move(_targetLocation!.coordinates, 16);
     }
     setState(() => _isOffRoute = false);
   }
@@ -623,18 +781,35 @@ class _NavigationScreenState extends State<NavigationScreen> {
           flex: 2,
           child: Stack(
             children: [
-              GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: _fallbackCameraTarget,
-                  zoom: 16,
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: _fallbackCameraTarget,
+                  initialZoom: 16,
+                  onTap: (_, _) =>
+                      setState(() => _selectedPinLocation = null),
                 ),
-                markers: _buildMarkers(),
-                myLocationEnabled: true,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                onMapCreated: (c) => _mapController = c,
+                children: [
+                  _tileLayer(),
+                  MarkerLayer(
+                    markers: [
+                      ..._buildMarkers(),
+                      if (_currentPosition != null)
+                        _currentPositionMarker(),
+                    ],
+                  ),
+                ],
               ),
+              Positioned(
+                bottom: 14,
+                right: 20,
+                child: _MapLayerToggleButton(
+                  isSatelliteView: _isSatelliteView,
+                  onToggle: () =>
+                      setState(() => _isSatelliteView = !_isSatelliteView),
+                ),
+              ),
+              _buildPinPopupOverlay(),
               // Persistent search bar + filter chip row (always visible,
               // per spec: not tap-to-reveal).
               Positioned(
@@ -685,20 +860,37 @@ class _NavigationScreenState extends State<NavigationScreen> {
           flex: 2,
           child: Stack(
             children: [
-              GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: _targetLocation?.coordinates ?? _fallbackCameraTarget,
-                  zoom: 16,
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter:
+                      _targetLocation?.coordinates ?? _fallbackCameraTarget,
+                  initialZoom: 16,
+                  onTap: (_, _) =>
+                      setState(() => _selectedPinLocation = null),
                 ),
-                markers: _buildMarkers(),
-                polylines: _buildRouteLine(),
-                myLocationEnabled: true,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                onMapCreated: (c) => _mapController = c,
-                onCameraMoveStarted: () {},
+                children: [
+                  _tileLayer(),
+                  PolylineLayer(polylines: _buildRouteLine()),
+                  MarkerLayer(
+                    markers: [
+                      ..._buildMarkers(),
+                      if (_currentPosition != null)
+                        _currentPositionMarker(),
+                    ],
+                  ),
+                ],
               ),
+              Positioned(
+                bottom: 14,
+                right: 20,
+                child: _MapLayerToggleButton(
+                  isSatelliteView: _isSatelliteView,
+                  onToggle: () =>
+                      setState(() => _isSatelliteView = !_isSatelliteView),
+                ),
+              ),
+              _buildPinPopupOverlay(),
               // Turn-by-turn route card overlay
               Positioned(
                 top: MediaQuery.of(context).padding.top + 12,
@@ -850,118 +1042,203 @@ class _NavigationScreenState extends State<NavigationScreen> {
   // ─── Shared "Live Updates" / "Accessibility Modes" panel ──────────────────
 
   Widget _buildAccessibilityPanel(AppColors colors) {
-    return Expanded(
-      flex: 3,
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: _isPanelExpanded
+          ? _buildExpandedPanelContent(colors)
+          : _buildCollapsedPanelBar(colors),
+    );
+  }
+
+  /// Full "Live Updates" + "Accessibility Modes" panel content, shown when
+  /// [_isPanelExpanded] is true. Wrapped in a fixed-viewport-height
+  /// [SizedBox] (rather than [Expanded]) so it works inside the
+  /// [AnimatedSize] used to animate the collapse/expand transition —
+  /// [Expanded] requires a [Flex] ancestor, which [AnimatedSize] isn't.
+  Widget _buildExpandedPanelContent(AppColors colors) {
+    return SizedBox(
+      height: 340,
       child: Container(
         decoration: BoxDecoration(
           color: colors.card,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 21, 24, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    'Live Updates',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w500,
-                      color: colors.ink,
+        child: Column(
+          children: [
+            _panelHandle(colors),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          'Live Updates',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                            color: colors.ink,
+                          ),
+                        ),
+                        Text(
+                          '${_liveUpdates.where((u) => u.isActive).length} active',
+                          style: TextStyle(fontSize: 12, color: colors.muted),
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    '${_liveUpdates.where((u) => u.isActive).length} active',
-                    style: TextStyle(fontSize: 12, color: colors.muted),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 19),
-              if (_liveUpdates.isEmpty)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 15,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: colors.paper,
-                    borderRadius: BorderRadius.circular(23),
-                  ),
-                  child: Text(
-                    'No accessibility modes are active.',
-                    style: TextStyle(fontSize: 13, color: colors.muted),
-                  ),
-                )
-              else
-                ..._liveUpdates.map(
-                  (update) => _LiveUpdateCard(
-                    colors: colors,
-                    update: update,
-                    onTap: () {
-                      if (update.type == AccessibilityType.brailleVoice) {
-                        _ttsService.speak(
-                          '${update.title}. ${update.subtitle}',
-                        );
-                      }
-                    },
-                  ),
+                    const SizedBox(height: 19),
+                    if (_liveUpdates.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 15,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.paper,
+                          borderRadius: BorderRadius.circular(23),
+                        ),
+                        child: Text(
+                          'No accessibility modes are active.',
+                          style: TextStyle(fontSize: 13, color: colors.muted),
+                        ),
+                      )
+                    else
+                      ..._liveUpdates.map(
+                        (update) => _LiveUpdateCard(
+                          colors: colors,
+                          update: update,
+                          onTap: () {
+                            if (update.type == AccessibilityType.brailleVoice) {
+                              _ttsService.speak(
+                                '${update.title}. ${update.subtitle}',
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    const SizedBox(height: 4),
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 13),
+                      padding: const EdgeInsets.only(top: 10),
+                      decoration: BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: colors.muted.withValues(alpha: 0.4),
+                          ),
+                        ),
+                      ),
+                      child: Text(
+                        'ACCESSIBILITY MODES',
+                        style: TextStyle(fontSize: 12, color: colors.muted),
+                      ),
+                    ),
+                    _AccessibilityModeButton(
+                      icon: Icons.restaurant_outlined,
+                      label: 'Vegetarian',
+                      isActive: _vegetarianMode,
+                      onToggle: () => setState(() {
+                        _vegetarianMode = !_vegetarianMode;
+                        _rebuildLiveUpdates();
+                      }),
+                    ),
+                    const SizedBox(height: 10),
+                    _AccessibilityModeButton(
+                      icon: Icons.touch_app_outlined,
+                      label: 'Braille / Voice',
+                      isActive: _brailleVoiceMode,
+                      onToggle: () {
+                        setState(() {
+                          _brailleVoiceMode = !_brailleVoiceMode;
+                          _rebuildLiveUpdates();
+                        });
+                        if (_brailleVoiceMode) {
+                          _ttsService.speak('Voice mode activated');
+                        } else {
+                          _ttsService.stop();
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    _AccessibilityModeButton(
+                      icon: Icons.accessible_rounded,
+                      label: 'Ramps & Elevators',
+                      isActive: _rampsMode,
+                      onToggle: () => setState(() {
+                        _rampsMode = !_rampsMode;
+                        _rebuildLiveUpdates();
+                      }),
+                    ),
+                  ],
                 ),
-              const SizedBox(height: 4),
-              Container(
-                margin: const EdgeInsets.only(bottom: 13),
-                padding: const EdgeInsets.only(top: 10),
-                decoration: BoxDecoration(
-                  border: Border(
-                    top: BorderSide(color: colors.muted.withValues(alpha: 0.4)),
-                  ),
-                ),
-                child: Text(
-                  'ACCESSIBILITY MODES',
-                  style: TextStyle(fontSize: 12, color: colors.muted),
-                ),
               ),
-              _AccessibilityModeButton(
-                icon: Icons.restaurant_outlined,
-                label: 'Vegetarian',
-                isActive: _vegetarianMode,
-                onToggle: () => setState(() {
-                  _vegetarianMode = !_vegetarianMode;
-                  _rebuildLiveUpdates();
-                }),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Collapsed bar shown when [_isPanelExpanded] is false: just the handle
+  /// and the "Live Updates" label/active count, so the map above can take
+  /// up the freed space.
+  Widget _buildCollapsedPanelBar(AppColors colors) {
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: [
+          _panelHandle(colors),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Live Updates',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: colors.ink,
               ),
-              const SizedBox(height: 10),
-              _AccessibilityModeButton(
-                icon: Icons.touch_app_outlined,
-                label: 'Braille / Voice',
-                isActive: _brailleVoiceMode,
-                onToggle: () {
-                  setState(() {
-                    _brailleVoiceMode = !_brailleVoiceMode;
-                    _rebuildLiveUpdates();
-                  });
-                  if (_brailleVoiceMode) {
-                    _ttsService.speak('Voice mode activated');
-                  } else {
-                    _ttsService.stop();
-                  }
-                },
-              ),
-              const SizedBox(height: 10),
-              _AccessibilityModeButton(
-                icon: Icons.accessible_rounded,
-                label: 'Ramps & Elevators',
-                isActive: _rampsMode,
-                onToggle: () => setState(() {
-                  _rampsMode = !_rampsMode;
-                  _rebuildLiveUpdates();
-                }),
-              ),
-            ],
+            ),
+          ),
+          Text(
+            '${_liveUpdates.where((u) => u.isActive).length} active',
+            style: TextStyle(fontSize: 12, color: colors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Chevron/handle control toggling [_isPanelExpanded] — tapping it
+  /// collapses the Live Updates/Accessibility Modes panel down to a thin
+  /// bar so the map can take up more of the screen, or restores it.
+  /// Placed at the panel's top edge in both states, matching the card's
+  /// existing rounded-top-corner style.
+  Widget _panelHandle(AppColors colors) {
+    return Center(
+      child: GestureDetector(
+        onTap: () => setState(() => _isPanelExpanded = !_isPanelExpanded),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          width: 44,
+          height: 28,
+          alignment: Alignment.center,
+          child: Icon(
+            _isPanelExpanded
+                ? Icons.keyboard_arrow_down_rounded
+                : Icons.keyboard_arrow_up_rounded,
+            color: colors.muted,
+            size: 22,
           ),
         ),
       ),
@@ -1284,6 +1561,148 @@ class _LiveUpdateCard extends StatelessWidget {
                     style: TextStyle(fontSize: 11, color: colors.muted),
                   ),
                 ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Marker Hue Categories ───────────────────────────────────────────────────
+// Mirrors the named-hue categories used with google_maps_flutter's
+// `BitmapDescriptor.defaultMarkerWithHue` (see `_hueToColor` for the actual
+// color mapping used by the flutter_map pin icons).
+
+enum _HueColors { green, blue, red, orange, yellow, violet, azure, rose }
+
+// ─── Location Pin Popup ─────────────────────────────────────────────────────
+// Photo + name bubble shown above a tapped pin (spec Section 5), replacing
+// google_maps_flutter's text-only `InfoWindow` — which can't display an
+// image by design — for every marker with an associated [LocationModel].
+// Reuses the same single canonical photo (`LocationModel.imageUrl`) and
+// fallback treatment as the rest of the app via [LocationPhoto].
+
+class _LocationPinPopup extends StatelessWidget {
+  final LocationModel location;
+  final VoidCallback onTap;
+  final VoidCallback onClose;
+
+  const _LocationPinPopup({
+    required this.location,
+    required this.onTap,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = AppColors.of(context);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 200,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: LocationPhoto(
+                  imagePath: location.imageUrl,
+                  fallbackColor: colors.forest.withValues(alpha: 0.5),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                location.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: colors.ink,
+                ),
+              ),
+            ),
+            GestureDetector(
+              onTap: onClose,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 4),
+                child: Icon(Icons.close_rounded, size: 16, color: colors.muted),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Map Layer Toggle Button ────────────────────────────────────────────────
+// Standard/satellite tile switch. Visually matches the app's existing
+// black accessibility-mode pill style (`_AccessibilityModeButton`), sized
+// down for a floating map control.
+
+class _MapLayerToggleButton extends StatelessWidget {
+  final bool isSatelliteView;
+  final VoidCallback onToggle;
+
+  const _MapLayerToggleButton({
+    required this.isSatelliteView,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF050505),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSatelliteView
+                  ? Icons.map_outlined
+                  : Icons.satellite_alt_outlined,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isSatelliteView ? 'Standard' : 'Satellite',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
           ],

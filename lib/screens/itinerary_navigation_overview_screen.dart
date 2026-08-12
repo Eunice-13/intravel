@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../models/location_model.dart';
 import '../theme/app_theme.dart';
@@ -27,56 +28,141 @@ class ItineraryNavigationOverviewScreen extends StatefulWidget {
 
 class _ItineraryNavigationOverviewScreenState
     extends State<ItineraryNavigationOverviewScreen> {
-  GoogleMapController? _mapController;
+  final MapController _mapController = MapController();
   int? _selectedLegIndex;
+  bool _isSatelliteView = false;
 
-  Set<Marker> _buildMarkers() {
-    return {
-      for (var index = 0; index < widget.stops.length; index++)
-        Marker(
-          markerId: MarkerId('itinerary-stop-${widget.stops[index].id}'),
-          position: widget.stops[index].coordinates,
-          infoWindow: InfoWindow(
-            title: '#${index + 1} ${widget.stops[index].name}',
-            snippet: index == 0
-                ? 'Start of itinerary'
-                : index == widget.stops.length - 1
-                ? 'Final stop'
-                : 'Stop ${index + 1} of ${widget.stops.length}',
-          ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            index == widget.stops.length - 1
-                ? BitmapDescriptor.hueGreen
-                : BitmapDescriptor.hueOrange,
-          ),
-        ),
-    };
+  /// Reports which leg polyline (identified by its `hitValue`, the leg
+  /// index) was tapped — the flutter_map equivalent of
+  /// google_maps_flutter's per-`Polyline` `consumeTapEvents: true` +
+  /// `onTap`, using the notifier + `GestureDetector` pattern flutter_map's
+  /// `PolylineLayer` supports for element-level hit identification.
+  final LayerHitNotifier<int> _legHitNotifier = ValueNotifier(null);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fitStops();
+    });
   }
 
-  Set<Polyline> _buildLegPolylines() {
-    return {
+  @override
+  void dispose() {
+    _legHitNotifier.dispose();
+    super.dispose();
+  }
+
+  /// The active base tile layer — OpenStreetMap standard tiles, or Esri
+  /// World Imagery satellite tiles when [_isSatelliteView] is toggled on.
+  /// Both are free, keyless tile sources (no Google Maps billing
+  /// dependency).
+  TileLayer _tileLayer() {
+    if (_isSatelliteView) {
+      return TileLayer(
+        urlTemplate:
+            'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        userAgentPackageName: 'com.example.intravel',
+      );
+    }
+    return TileLayer(
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      userAgentPackageName: 'com.example.intravel',
+    );
+  }
+
+  List<Marker> _buildMarkers() {
+    return [
+      for (var index = 0; index < widget.stops.length; index++)
+        Marker(
+          point: widget.stops[index].coordinates,
+          width: 40,
+          height: 40,
+          alignment: Alignment.topCenter,
+          child: GestureDetector(
+            onTap: () => _showStopInfo(
+              title: '#${index + 1} ${widget.stops[index].name}',
+              snippet: index == 0
+                  ? 'Start of itinerary'
+                  : index == widget.stops.length - 1
+                  ? 'Final stop'
+                  : 'Stop ${index + 1} of ${widget.stops.length}',
+            ),
+            child: Icon(
+              Icons.location_on,
+              color: index == widget.stops.length - 1
+                  ? const Color(0xFF34A853)
+                  : const Color(0xFFFF9800),
+              size: 40,
+            ),
+          ),
+        ),
+    ];
+  }
+
+  /// Shows the same title/snippet text an `InfoWindow` bubble used to
+  /// display for each stop marker — flutter_map has no inline
+  /// map-anchored info-bubble equivalent, so this uses a bottom sheet
+  /// instead (see the same migration note in navigation_screen.dart).
+  void _showStopInfo({required String title, required String snippet}) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(snippet, style: const TextStyle(fontSize: 13)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Polyline<int>> _buildLegPolylines() {
+    return [
       for (var index = 0; index < widget.stops.length - 1; index++)
-        Polyline(
-          polylineId: PolylineId('itinerary-leg-$index'),
+        Polyline<int>(
           points: [
             widget.stops[index].coordinates,
             widget.stops[index + 1].coordinates,
           ],
           color: _selectedLegIndex == index ? AppTheme.forest : AppTheme.accent,
-          width: _selectedLegIndex == index ? 7 : 5,
-          consumeTapEvents: true,
-          onTap: () => setState(() => _selectedLegIndex = index),
+          strokeWidth: _selectedLegIndex == index ? 7 : 5,
+          hitValue: index,
         ),
-    };
+    ];
+  }
+
+  /// Handles taps on leg polylines, resolved via [_legHitNotifier] — the
+  /// flutter_map equivalent of google_maps_flutter's per-`Polyline`
+  /// `consumeTapEvents: true` + `onTap` (see the field doc on
+  /// [_legHitNotifier] for details).
+  void _onMapTap() {
+    final result = _legHitNotifier.value;
+    if (result == null || result.hitValues.isEmpty) {
+      setState(() => _selectedLegIndex = null);
+      return;
+    }
+    setState(() => _selectedLegIndex = result.hitValues.first);
   }
 
   void _fitStops() {
-    if (_mapController == null || widget.stops.isEmpty) return;
+    if (widget.stops.isEmpty) return;
 
     if (widget.stops.length == 1) {
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(widget.stops.first.coordinates, 16),
-      );
+      _mapController.move(widget.stops.first.coordinates, 16);
       return;
     }
 
@@ -100,13 +186,10 @@ class _ItineraryNavigationOverviewScreenState
           : east;
     }
 
-    _mapController!.animateCamera(
-      CameraUpdate.newLatLngBounds(
-        LatLngBounds(
-          southwest: LatLng(south, west),
-          northeast: LatLng(north, east),
-        ),
-        58,
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds(LatLng(south, west), LatLng(north, east)),
+        padding: const EdgeInsets.all(58),
       ),
     );
   }
@@ -197,24 +280,24 @@ class _ItineraryNavigationOverviewScreenState
               flex: 3,
               child: Stack(
                 children: [
-                  GoogleMap(
-                    initialCameraPosition: CameraPosition(
-                      target: widget.stops.first.coordinates,
-                      zoom: 15,
+                  FlutterMap(
+                    mapController: _mapController,
+                    options: MapOptions(
+                      initialCenter: widget.stops.first.coordinates,
+                      initialZoom: 15,
+                      onTap: (_, _) => setState(() => _selectedLegIndex = null),
                     ),
-                    markers: _buildMarkers(),
-                    polylines: _buildLegPolylines(),
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: false,
-                    zoomControlsEnabled: false,
-                    mapToolbarEnabled: false,
-                    onTap: (_) => setState(() => _selectedLegIndex = null),
-                    onMapCreated: (controller) {
-                      _mapController = controller;
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) _fitStops();
-                      });
-                    },
+                    children: [
+                      _tileLayer(),
+                      GestureDetector(
+                        onTap: _onMapTap,
+                        child: PolylineLayer<int>(
+                          hitNotifier: _legHitNotifier,
+                          polylines: _buildLegPolylines(),
+                        ),
+                      ),
+                      MarkerLayer(markers: _buildMarkers()),
+                    ],
                   ),
                   Positioned(
                     top: 14,
@@ -226,6 +309,16 @@ class _ItineraryNavigationOverviewScreenState
                       selectedLegIndex: _selectedLegIndex,
                       onNavigate: () => _openLiveGuidance(
                         _selectedLegIndex == null ? 0 : _selectedLegIndex! + 1,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 14,
+                    right: 20,
+                    child: _MapLayerToggleButton(
+                      isSatelliteView: _isSatelliteView,
+                      onToggle: () => setState(
+                        () => _isSatelliteView = !_isSatelliteView,
                       ),
                     ),
                   ),
@@ -480,6 +573,63 @@ class _ItineraryStopCard extends StatelessWidget {
                   color: Colors.white,
                   size: 17,
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Map Layer Toggle Button ────────────────────────────────────────────────
+// Standard/satellite tile switch. Visually matches the app's existing
+// black accessibility-mode pill style (see `_AccessibilityModeButton` in
+// navigation_screen.dart), sized down for a floating map control.
+
+class _MapLayerToggleButton extends StatelessWidget {
+  final bool isSatelliteView;
+  final VoidCallback onToggle;
+
+  const _MapLayerToggleButton({
+    required this.isSatelliteView,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF050505),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSatelliteView
+                  ? Icons.map_outlined
+                  : Icons.satellite_alt_outlined,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isSatelliteView ? 'Standard' : 'Satellite',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
           ],

@@ -1,4 +1,4 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 
 class LocationModel {
   final String id;
@@ -216,6 +216,28 @@ class Review {
          rating >= 1.0 && rating <= 5.0,
          'Review rating must be between 1.0 and 5.0',
        );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'authorName': authorName,
+    'authorPhotoUrl': authorPhotoUrl,
+    'rating': rating,
+    'text': text,
+    'publishedAt': publishedAt.toIso8601String(),
+  };
+
+  factory Review.fromJson(Map<String, dynamic> json) {
+    return Review(
+      id: json['id'] as String,
+      authorName: json['authorName'] as String,
+      authorPhotoUrl: json['authorPhotoUrl'] as String? ?? '',
+      rating: (json['rating'] as num).toDouble(),
+      text: json['text'] as String,
+      publishedAt:
+          DateTime.tryParse(json['publishedAt'] as String? ?? '') ??
+          DateTime.now(),
+    );
+  }
 
   /// Human-readable relative time (e.g. "2 weeks ago"), computed from
   /// [publishedAt] rather than stored, so it never goes stale relative to

@@ -1,4 +1,4 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:latlong2/latlong.dart';
 import '../models/location_model.dart';
 
 /// Lightweight, unstyled site record mirroring the `touristSites` /
