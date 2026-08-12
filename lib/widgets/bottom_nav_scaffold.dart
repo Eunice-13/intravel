@@ -149,8 +149,17 @@ class _NavButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(25),
         ),
         alignment: Alignment.center,
+<<<<<<< HEAD
         // The tab row sizes to its visual content: inactive tabs remain
         // compact while the active tab expands into its icon-and-label pill.
+=======
+        // No longer wrapped in a tight `Expanded` slot (see
+        // BottomNavScaffold), so this Row can size itself to its actual
+        // content: inactive tabs stay icon-only and compact, while the
+        // active tab is free to grow into the full icon + label pill shown
+        // in the design reference, instead of being squeezed into an equal
+        // quarter-width slot and having its label collapse to an ellipsis.
+>>>>>>> 1bf5e9873516450c381783a752bdee7f035f10a7
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

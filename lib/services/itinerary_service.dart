@@ -184,9 +184,16 @@ class ItineraryService extends ChangeNotifier {
     final sites = qualifyingSitesForRoute(route);
     if (sites.length < 2) return const [];
 
+<<<<<<< HEAD
     final targetCount = ((route.hours * 60) / _avgMinutesPerSite)
         .round()
         .clamp(2, sites.length);
+=======
+    final targetCount = ((route.hours * 60) / _avgMinutesPerSite).round().clamp(
+      2,
+      sites.length,
+    );
+>>>>>>> 1bf5e9873516450c381783a752bdee7f035f10a7
     final stopsPerOption = targetCount.clamp(2, sites.length);
     final optionCount = (sites.length / stopsPerOption).ceil().clamp(1, 4);
 
@@ -275,6 +282,9 @@ class ItineraryService extends ChangeNotifier {
     while (remaining.isNotEmpty) {
       var nearestIndex = 0;
       var nearestDistance = double.infinity;
+      // Strict `<` (not `<=`) is intentional: on a tie, the first-encountered
+      // stop in `remaining`'s current order wins, so ties resolve stably by
+      // list order instead of flip-flopping between runs.
       for (var i = 0; i < remaining.length; i++) {
         final distance = Geolocator.distanceBetween(
           currentPoint.latitude,
