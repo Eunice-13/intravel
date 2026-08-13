@@ -20,6 +20,7 @@ import '../services/accessibility_settings_service.dart';
 import '../widgets/location_photo.dart';
 import 'location_details_screen.dart';
 import 'osm_poi_map_screen.dart';
+import 'favorites_screen.dart';
 
 /// Navigation screen. Visual language (route-card overlay, recenter button,
 /// Live Updates list, black accessibility-mode pills) is ported from the
@@ -706,6 +707,18 @@ class _NavigationScreenState extends State<NavigationScreen> {
         .getAllLocations()
         .where((site) => _activeCategoryFilters.contains(site.category))
         .toList();
+  }
+
+  /// Opens the Itinerary Hub (Your Hub → Itineraries tab) directly from
+  /// the Navigation screen's filter row, so saved itineraries aren't only
+  /// reachable through Settings → Saved Places, which buried them behind
+  /// an extra navigation step.
+  void _openItinerariesHub() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const FavoritesScreen(initialTab: 'Itineraries'),
+      ),
+    );
   }
 
   // ─── Marker building (native GoogleMap Marker/InfoWindow) ─────────────────
@@ -1434,6 +1447,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
                       categories: _navFilterCategories,
                       activeCategories: _activeCategoryFilters,
                       onToggle: _toggleCategoryFilter,
+                      onOpenItineraries: _openItinerariesHub,
                     ),
                   ],
                 ),
@@ -2320,12 +2334,14 @@ class _NavFilterChipRow extends StatelessWidget {
   final List<String> categories;
   final Set<String> activeCategories;
   final ValueChanged<String> onToggle;
+  final VoidCallback onOpenItineraries;
 
   const _NavFilterChipRow({
     required this.colors,
     required this.categories,
     required this.activeCategories,
     required this.onToggle,
+    required this.onOpenItineraries,
   });
 
   @override
@@ -2336,9 +2352,41 @@ class _NavFilterChipRow extends StatelessWidget {
       height: 34,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
+        // +1 for the trailing "Itineraries" entry point, kept in the same
+        // scrollable row as the category filter chips per design so it
+        // reads as sitting alongside Fortifications/Landmarks/Schools/
+        // Parks rather than as a separate control below them.
+        itemCount: categories.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
+          if (index == categories.length) {
+            return GestureDetector(
+              onTap: onOpenItineraries,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.forest,
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.explore_outlined, size: 14, color: Colors.white),
+                    SizedBox(width: 5),
+                    Text(
+                      'Itineraries',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
           final category = categories[index];
           final isActive = activeCategories.contains(category);
           return GestureDetector(

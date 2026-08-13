@@ -16,14 +16,22 @@ import 'itinerary_navigation_overview_screen.dart';
 /// Backed by [SavedPlacesService] so saves made on the details screen show
 /// up here immediately and persist across app restarts.
 class FavoritesScreen extends StatefulWidget {
-  const FavoritesScreen({super.key});
+  /// Which hub tab to show first — defaults to 'Locations' to match the
+  /// original branch behavior. Pass 'Itineraries' when deep-linking here
+  /// from an entry point whose whole purpose is surfacing saved
+  /// itineraries (e.g. the Navigation screen's Itineraries chip, or the
+  /// Home screen's "View Saved Itineraries" button), so the user lands
+  /// straight on the relevant tab instead of Locations.
+  final String initialTab;
+
+  const FavoritesScreen({super.key, this.initialTab = 'Locations'});
 
   @override
   State<FavoritesScreen> createState() => _FavoritesScreenState();
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  String _selectedTab = 'Locations';
+  late String _selectedTab = widget.initialTab;
 
   @override
   void initState() {

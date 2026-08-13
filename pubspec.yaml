@@ -48,4 +48,4 @@ flutter:
     # `flutter run` with no flags) — see lib/services/routing_service.dart.
     # env.json itself stays gitignored; only this path declaration is
     # committed.
-    - env.json
+    # - env.json

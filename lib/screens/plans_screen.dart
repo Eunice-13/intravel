@@ -40,18 +40,11 @@ class _PlansScreenState extends State<PlansScreen> {
     'Large': 10,
   };
 
-  /// Shared budget-range filter state (addendum spec 3.1, 3.6): both the
-  /// bottom budget bar and the detailed filter sheet opened from the
-  /// header icon read from and write to this same state.
+  /// Shared budget-range filter state (addendum spec 3.1, 3.6): the
+  /// detailed filter sheet opened from the header icon reads from and
+  /// writes to this state, which in turn filters the curated routes and
+  /// site list below.
   PlanBudgetFilter _budgetFilter = PlanBudgetFilter.none;
-  final TextEditingController _budgetBarController = TextEditingController();
-  String? _budgetBarError;
-
-  @override
-  void dispose() {
-    _budgetBarController.dispose();
-    super.dispose();
-  }
 
   static const List<String> _travelers = ['Solo', 'Couple', 'Group', 'Large'];
   static const Map<String, String> _travelerHints = {
@@ -108,27 +101,13 @@ class _PlansScreenState extends State<PlansScreen> {
     return _budgetFilter.allowsRange(cost.min, cost.max);
   }
 
-  void _applyBudgetFilter(PlanBudgetFilter next, {bool fromSheet = false}) {
-    setState(() {
-      _budgetFilter = next;
-      _budgetBarError = null;
-      if (!fromSheet) {
-        // Bottom-bar edits only ever set an upper bound, mirroring the
-        // single "Type your total budget..." field's intent.
-      } else {
-        // Sheet edits should also reflect back onto the bottom bar so both
-        // controls stay in sync (spec 3.1: entering a value in one is
-        // reflected in the other).
-        _budgetBarController.text = next.max != null
-            ? next.max!.round().toString()
-            : (next.min != null ? next.min!.round().toString() : '');
-      }
-    });
+  void _applyBudgetFilter(PlanBudgetFilter next) {
+    setState(() => _budgetFilter = next);
   }
 
   Future<void> _openBudgetSheet() async {
     final result = await showBudgetFilterSheet(context, _budgetFilter);
-    if (result != null) _applyBudgetFilter(result, fromSheet: true);
+    if (result != null) _applyBudgetFilter(result);
   }
 
   Future<void> _openRoutePlanOptions(CuratedRoute route) async {
@@ -137,13 +116,134 @@ class _PlansScreenState extends State<PlansScreen> {
     );
   }
 
+  /// Opens a centered, receipt-styled dialog summarising every stop across
+  /// all saved itineraries (deduplicated by location, since the same site
+  /// might appear in more than one saved itinerary) with a per-stop price
+  /// and running total — replaces the old free-text "Type your total
+  /// budget" bar with something that reflects what's actually been saved.
+  void _showItineraryReceipt(BuildContext context) {
+    final itineraries = ItineraryService.instance.itineraries;
+    final seenIds = <String>{};
+    final lineItems = <({String name, double cost})>[];
+    for (final itinerary in itineraries) {
+      for (final site in ItineraryService.instance.resolveLocations(itinerary)) {
+        if (!seenIds.add(site.id)) continue;
+        lineItems.add((name: site.name, cost: site.budgetRange.min));
+      }
+    }
+    final total = lineItems.fold<double>(0, (sum, item) => sum + item.cost);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: const Color(0xFFFFFDF7),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'ITINERARY',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.of(dialogContext).pop(),
+                      child: const Icon(Icons.close, size: 22, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: DottedDivider(),
+                ),
+                if (lineItems.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      'No saved itinerary stops yet.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else
+                  ...lineItems.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            '₱${item.cost.round()}',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: DottedDivider(),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'TOTAL',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '₱${total.round()}',
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: DoubleDivider(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final budgetFieldColor = isDark
-        ? const Color(0xFF6E8178)
-        : const Color(0xFF65746C);
     final allRoutes = RouteService().getAllRoutes();
     final routes = allRoutes.where(_routeWithinBudget).toList();
     final sites = LocationService().getAllLocations().where((s) {
@@ -378,12 +478,14 @@ class _PlansScreenState extends State<PlansScreen> {
                 ),
               const SizedBox(height: 20),
 
-              // ─── Budget Bar (spec 3.1, 3.6) ─────────────────────────────
-              // Shared with the detailed filter sheet opened from the
-              // header icon above: editing either updates the other, and
-              // both filter the curated routes and site list live.
+              // ─── View Itinerary (receipt summary) ───────────────────────
+              // Replaces the old free-text budget bar: a compact bar with
+              // a "Your saved stops" label on the left and a receipt-style
+              // "View Itinerary" button on the right that pops up a
+              // centered summary of every saved itinerary's stops and
+              // running total, styled like a printed receipt.
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                 decoration: BoxDecoration(
                   color: isDark ? colors.card : const Color(0xFFEDE7DC),
                   borderRadius: BorderRadius.circular(30),
@@ -391,54 +493,44 @@ class _PlansScreenState extends State<PlansScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _budgetBarController,
-                        keyboardType: TextInputType.number,
-                        style: TextStyle(fontSize: 13, color: budgetFieldColor),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          hintText: '₱ Type your total budget…',
-                          hintStyle: TextStyle(color: budgetFieldColor),
-                          errorText: _budgetBarError,
-                        ),
-                        onChanged: (v) {
-                          final trimmed = v.trim();
-                          final parsed = double.tryParse(trimmed);
-                          final nextMax = trimmed.isEmpty
-                              ? null
-                              : (parsed != null && parsed >= 0
-                                    ? parsed
-                                    : _budgetFilter.max);
-                          // Validation (addendum spec 3.1): the max
-                          // budget must be greater than the min budget
-                          // set via the detailed filter sheet.
-                          if (nextMax != null &&
-                              _budgetFilter.min != null &&
-                              nextMax <= _budgetFilter.min!) {
-                            setState(() {
-                              _budgetBarError =
-                                  'Max must be greater than min (₱${_budgetFilter.min!.round()}).';
-                            });
-                            return;
-                          }
-                          _applyBudgetFilter(
-                            PlanBudgetFilter(
-                              min: _budgetFilter.min,
-                              max: nextMax,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
                     Text(
-                      'Est. total\n${_formatEstimatedTotal(sites)}',
-                      textAlign: TextAlign.right,
+                      'Your saved stops',
                       style: TextStyle(
                         color: const Color(0xFF6E8178),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _showItineraryReceipt(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.forest,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.receipt_long_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'View Itinerary',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -496,16 +588,6 @@ class _PlansScreenState extends State<PlansScreen> {
     );
   }
 
-  String _formatEstimatedTotal(List<LocationModel> visibleSites) {
-    if (visibleSites.isEmpty) return '₱0';
-    final total =
-        visibleSites.fold<double>(
-          0,
-          (sum, site) => sum + _scaledSiteCost(site).min,
-        ) /
-        visibleSites.length;
-    return '₱${total.round()}';
-  }
 }
 
 // ─── Route Card ─────────────────────────────────────────────────────────────────
@@ -713,4 +795,59 @@ class _SiteListCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─── Receipt Dividers ───────────────────────────────────────────────────────
+// Small custom-painted dividers used by the itinerary receipt dialog
+// (_showItineraryReceipt) to mimic a printed receipt's dashed rule and
+// double rule at the bottom.
+
+class DottedDivider extends StatelessWidget {
+  const DottedDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(double.infinity, 1),
+      painter: _DashedLinePainter(color: const Color(0xFF9C9C9C)),
+    );
+  }
+}
+
+class DoubleDivider extends StatelessWidget {
+  const DoubleDivider({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(height: 1.5, color: const Color(0xFF9C9C9C)),
+        const SizedBox(height: 3),
+        Container(height: 1.5, color: const Color(0xFF9C9C9C)),
+      ],
+    );
+  }
+}
+
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  const _DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    const dashWidth = 4.0;
+    const dashSpace = 3.0;
+    double startX = 0;
+    while (startX < size.width) {
+      canvas.drawLine(Offset(startX, 0), Offset(startX + dashWidth, 0), paint);
+      startX += dashWidth + dashSpace;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) => false;
 }
