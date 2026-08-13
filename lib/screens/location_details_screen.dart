@@ -7,7 +7,7 @@ import '../services/location_service.dart';
 import '../services/saved_places_service.dart';
 import '../services/review_service.dart';
 import '../widgets/location_photo.dart';
-import 'navigation_screen.dart';
+import '../widgets/nav_flow_launcher.dart';
 import 'review_form_screen.dart';
 
 /// Location details screen. Layout (hero + facts + history + highlights +
@@ -69,9 +69,7 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
     LocationModel location,
   ) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ReviewFormScreen(location: location),
-      ),
+      MaterialPageRoute(builder: (_) => ReviewFormScreen(location: location)),
     );
     // ReviewService's ChangeNotifier + the AnimatedBuilder in build()
     // already refresh this screen once the submission completes; no
@@ -506,9 +504,7 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
                           width: double.infinity,
                           child: LocationPhoto(
                             imagePath: location.imageUrl,
-                            fallbackColor: colors.forest.withValues(
-                              alpha: 0.5,
-                            ),
+                            fallbackColor: colors.forest.withValues(alpha: 0.5),
                           ),
                         ),
                       ),
@@ -582,14 +578,8 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
               child: SafeArea(
                 top: false,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            NavigationScreen(targetLocation: location),
-                      ),
-                    );
-                  },
+                  onPressed: () =>
+                      NavFlowLauncher.start(context, location: location),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: colors.forest,
                     foregroundColor: Colors.white,

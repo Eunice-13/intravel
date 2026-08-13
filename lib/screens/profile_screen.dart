@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
+import '../models/nav_target.dart';
+import '../models/route_model.dart';
 import '../services/gate_selection_service.dart';
 import '../services/gate_service.dart';
 import '../services/accessibility_settings_service.dart';
+import '../services/route_service.dart';
 import '../services/weather_service.dart';
 import '../models/weather_model.dart';
+import '../widgets/nav_flow_launcher.dart';
 import 'favorites_screen.dart';
 import 'gate_selection_screen.dart';
 import 'reviewable_locations_screen.dart';
@@ -23,6 +27,11 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   String _mapStyle = 'Standard';
+
+  /// Whether the Transport & Access section is expanded (addendum spec
+  /// Section 4.3's "minimize/collapse control"). Starts expanded, same
+  /// default as the Navigate flow's Live Updates panel.
+  bool _isTransportSectionExpanded = true;
 
   // Intramuros, Manila — same default center used by the app's map screens.
   static const double _weatherLat = 14.5906;
@@ -389,12 +398,175 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       );
                     },
                   ),
+
+                  const SizedBox(height: 17),
+                  _buildTransportAccessSection(colors),
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  // ─── Transport & Access (addendum spec Section 4.3) ────────────────────
+
+  Widget _buildTransportAccessSection(AppColors colors) {
+    final options = RouteService().getTransportOptions();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => setState(
+            () => _isTransportSectionExpanded = !_isTransportSectionExpanded,
+          ),
+          behavior: HitTestBehavior.opaque,
+          child: Row(
+            children: [
+              Text(
+                'TRANSPORT & ACCESS',
+                style: TextStyle(color: colors.muted, fontSize: 11),
+              ),
+              const Spacer(),
+              Icon(
+                _isTransportSectionExpanded
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.keyboard_arrow_down_rounded,
+                color: colors.muted,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: _isTransportSectionExpanded
+              ? Column(
+                  children: options
+                      .map(
+                        (option) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: _TransportOptionCard(
+                            colors: colors,
+                            option: option,
+                            onTap: option.coordinates == null
+                                ? null
+                                : () => NavFlowLauncher.startWithTarget(
+                                    context,
+                                    target: NavTarget(
+                                      name: option.name,
+                                      coordinates: option.coordinates!,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Transport Option Card ───────────────────────────────────────────────────
+// Addendum spec Section 4.3: tapping a transport option navigates to its
+// real-world location (verified via web search — see RouteService), using
+// the shared Navigate flow like every other destination in the app.
+// [onTap] is null for options with no single fixed real-world point,
+// which disables the row's navigate affordance while still showing
+// pricing/notes.
+
+class _TransportOptionCard extends StatelessWidget {
+  final AppColors colors;
+  final TransportOption option;
+  final VoidCallback? onTap;
+
+  const _TransportOptionCard({
+    required this.colors,
+    required this.option,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: colors.card,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: colors.muted.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.forest.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Text(option.emoji, style: const TextStyle(fontSize: 20)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    option.name,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: colors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    option.pricing,
+                    style: TextStyle(fontSize: 11, color: colors.muted),
+                  ),
+                  if (option.locationLabel.isNotEmpty) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.place_outlined,
+                          size: 12,
+                          color: colors.accent,
+                        ),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            option.locationLabel,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: colors.accent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (onTap != null)
+              Icon(Icons.navigation_outlined, color: colors.forest, size: 20),
+          ],
+        ),
+      ),
     );
   }
 }

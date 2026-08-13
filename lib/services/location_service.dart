@@ -74,7 +74,10 @@ class LocationService {
       ],
       visitNote:
           'Hours and fees are shown from the Intramuros Administration schedule and may change for weather, events, or special bookings. Check the official notice before travelling.',
-      coordinates: const LatLng(14.5951, 120.9718),
+      // Verified against the main gate/entrance (not the fort's geometric
+      // centroid), cross-checked between OSM way data and the existing
+      // pois.json "Fort Santiago Gate" entry: 14.593865, 120.9707241.
+      coordinates: const LatLng(14.5939, 120.9707),
       relatedPlaceIds: [
         'museo-ni-rizal',
         'plaza-de-armas',
@@ -347,7 +350,11 @@ class LocationService {
       ],
       visitNote:
           'Use designated visitor routes. Event use and access arrangements can affect availability.',
-      coordinates: const LatLng(14.5865, 120.9724),
+      // Verified against Wikipedia's Baluarte de San Diego coordinate
+      // (14°35'07"N 120°58'32"E) and a camera-geotagged Wikimedia Commons
+      // photo of the site's own entrance/gardens (14°35'10"N 120°58'31"E)
+      // -- the previous value was off by roughly 300m in longitude.
+      coordinates: const LatLng(14.5858, 120.9755),
       relatedPlaceIds: [
         'baluarte-de-san-diego-gardens',
         'puerta-real-gardens',
@@ -391,7 +398,11 @@ class LocationService {
       ],
       visitNote:
           'Outdoor access may be affected by weather or private events; verify access on the day of your visit.',
-      coordinates: const LatLng(14.5868, 120.9721),
+      // Adjacent to the corrected Baluarte de San Diego coordinate above
+      // (same source: camera-geotagged Wikimedia Commons photo of the
+      // gardens, 14°35'10"N 120°58'31"E) -- previous value was off by
+      // roughly 300m in longitude.
+      coordinates: const LatLng(14.5861, 120.9753),
       relatedPlaceIds: [
         'baluarte-de-san-diego',
         'puerta-real-gardens',
@@ -622,7 +633,9 @@ class LocationService {
       ],
       visitNote:
           'This is primarily a government and historic exterior site; access beyond public areas is not assumed.',
-      coordinates: const LatLng(14.5914, 120.9727),
+      // Verified against OpenStreetMap's "Ayuntamiento de Manila (Casas
+      // Consistoriales)" node: 14.5925078, 120.9733269.
+      coordinates: const LatLng(14.5925, 120.9733),
       relatedPlaceIds: [
         'plaza-roma',
         'manila-cathedral',
@@ -786,7 +799,11 @@ class LocationService {
       ],
       visitNote:
           'View from designated exterior routes; access can be restricted during repairs or site operations.',
-      coordinates: const LatLng(14.5962, 120.9727),
+      // Verified against the Historical Marker Database (hmdb.org) marker
+      // for Baluarte de Santa Barbara, which places it inside Fort
+      // Santiago itself (14° 35.702' N, 120° 58.177' E) rather than the
+      // previous coordinate, which was roughly 350m away.
+      coordinates: const LatLng(14.5950, 120.9696),
       relatedPlaceIds: ['fort-santiago'],
     ),
     _RawSite(
@@ -878,7 +895,12 @@ class LocationService {
       ],
       visitNote:
           'Outdoor access and event use can change. Confirm on-site conditions before travelling.',
-      coordinates: const LatLng(14.5857, 120.9740),
+      // Verified against a camera-geotagged Wikimedia Commons photo taken
+      // beside this ravelin (same photo set as the corrected Baluarte de
+      // San Diego Gardens entry): 14°35'8"N 120°58'38"E -- previous value
+      // was off by roughly 300m in longitude, placing it much further
+      // west than the real site.
+      coordinates: const LatLng(14.5856, 120.9772),
       relatedPlaceIds: ['puerta-real-gardens', 'baluarte-de-san-diego'],
     ),
     _RawSite(
@@ -981,7 +1003,9 @@ class LocationService {
       ],
       visitNote:
           'Free exterior access. The gate area may be affected by nearby road traffic; exercise care.',
-      coordinates: const LatLng(14.5920, 120.9787),
+      // Verified against a camera-geotagged Wikimedia Commons photo taken
+      // at this gate: 14°35'32"N 120°58'41"E.
+      coordinates: const LatLng(14.5922, 120.9781),
       relatedPlaceIds: [
         'asean-gardens',
         'galleria-de-los-presidentes',
@@ -1241,7 +1265,10 @@ class LocationService {
       ],
       visitNote:
           'Public school campus. Visitor access requires coordination with school administration.',
-      coordinates: const LatLng(14.5920, 120.9770),
+      // Verified against a camera-geotagged Wikimedia Commons photo taken
+      // at Manila High School (14°35'21"N 120°58'27"E) -- previous value
+      // was off by roughly 300m.
+      coordinates: const LatLng(14.5892, 120.9742),
       relatedPlaceIds: [
         'colegio-de-san-juan-de-letran',
         'puerta-isabel-ii',

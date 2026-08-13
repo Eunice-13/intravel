@@ -184,16 +184,10 @@ class ItineraryService extends ChangeNotifier {
     final sites = qualifyingSitesForRoute(route);
     if (sites.length < 2) return const [];
 
-<<<<<<< HEAD
     final targetCount = ((route.hours * 60) / _avgMinutesPerSite).round().clamp(
       2,
       sites.length,
     );
-=======
-    final targetCount = ((route.hours * 60) / _avgMinutesPerSite)
-        .round()
-        .clamp(2, sites.length);
->>>>>>> 89eeb05eb31a97f8024285200b19f8126c1f9f7f
     final stopsPerOption = targetCount.clamp(2, sites.length);
     final optionCount = (sites.length / stopsPerOption).ceil().clamp(1, 4);
 

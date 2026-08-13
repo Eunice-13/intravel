@@ -3,7 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../models/location_model.dart';
 import '../theme/app_theme.dart';
-import 'navigation_screen.dart';
+import '../widgets/nav_flow_launcher.dart';
 
 /// Shows every stop in the currently selected itinerary order on one map.
 ///
@@ -114,11 +114,13 @@ class _ItineraryNavigationOverviewScreenState
 
   void _openLiveGuidance(int targetIndex) {
     if (targetIndex < 0 || targetIndex >= widget.stops.length) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            NavigationScreen(targetLocation: widget.stops[targetIndex]),
-      ),
+    // Per-leg transport choice (addendum spec Section 6, user-confirmed
+    // decision): each leg independently runs the transport-mode picker
+    // then the shared view-mode picker, rather than choosing one
+    // transport mode for the whole itinerary session.
+    NavFlowLauncher.startFromItinerary(
+      context,
+      location: widget.stops[targetIndex],
     );
   }
 

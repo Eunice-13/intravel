@@ -1,9 +1,16 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 import '../models/route_result_model.dart';
+
+String _truncate(String value, int maxLength) {
+  return value.length <= maxLength
+      ? value
+      : '${value.substring(0, maxLength)}…';
+}
 
 /// Abstraction over a walking-directions provider, so `OsmPoiMapScreen`
 /// doesn't depend on a concrete routing backend directly. The only
@@ -57,15 +64,38 @@ class OpenRouteServiceRouting implements RoutingService {
     http.Client? client,
     String apiKey = const String.fromEnvironment('ORS_API_KEY'),
   }) : _client = client ?? http.Client(),
-       _apiKey = apiKey;
+       _apiKey = apiKey {
+    // Diagnostic only (debug builds; stripped from release) — logs
+    // whether a key was actually compiled in at all, and its length, but
+    // never the key value itself. This answers the single most common
+    // failure mode directly: "is ORS_API_KEY actually non-empty at
+    // runtime, or is --dart-define-from-file simply not being applied by
+    // whatever ran/installed this build?"
+    debugPrint(
+      _apiKey.isEmpty
+          ? '[OpenRouteServiceRouting] No ORS_API_KEY compiled in — every '
+                'request will fail with RoutingErrorType.invalidApiKey until '
+                'the app is rebuilt with --dart-define-from-file=env.json '
+                '(or an equivalent --dart-define=ORS_API_KEY=...). A stale '
+                'already-installed APK built without that flag will show '
+                'this even if env.json now has a real key — reinstall after '
+                'rebuilding.'
+          : '[OpenRouteServiceRouting] ORS_API_KEY compiled in '
+                '(${_apiKey.length} chars). Key value itself is never logged.',
+    );
+  }
 
   @override
   Future<RouteResult> getWalkingRoute(LatLng start, LatLng end) async {
     if (_apiKey.isEmpty) {
+      debugPrint(
+        '[OpenRouteServiceRouting] getWalkingRoute() aborted before any '
+        'network call: ORS_API_KEY is empty at runtime.',
+      );
       throw const RoutingException(
         RoutingErrorType.invalidApiKey,
         'Routing is not configured: missing ORS_API_KEY. Run with '
-            '--dart-define=ORS_API_KEY=your_key.',
+        '--dart-define=ORS_API_KEY=your_key.',
       );
     }
 
@@ -77,6 +107,11 @@ class OpenRouteServiceRouting implements RoutingService {
       ],
     });
 
+    debugPrint(
+      '[OpenRouteServiceRouting] Requesting foot-walking route: '
+      '($start) -> ($end)',
+    );
+
     http.Response response;
     try {
       response = await _client
@@ -85,26 +120,38 @@ class OpenRouteServiceRouting implements RoutingService {
             headers: {
               'Authorization': _apiKey,
               'Content-Type': 'application/json',
-              'Accept':
-                  'application/geo+json, application/json; charset=utf-8',
+              'Accept': 'application/geo+json, application/json; charset=utf-8',
             },
             body: body,
           )
           .timeout(const Duration(seconds: 15));
     } catch (e) {
+      debugPrint(
+        '[OpenRouteServiceRouting] Request threw before a response '
+        'was received (network/timeout): $e',
+      );
       throw RoutingException(
         RoutingErrorType.network,
         'Could not reach the routing service. Check your connection and '
-            'try again.',
+        'try again.',
         cause: e,
       );
     }
+
+    // Always logged, success or failure — this is what answers "is the
+    // call happening at all, and what does the raw response actually
+    // look like?" without needing to reproduce the failure blind.
+    debugPrint(
+      '[OpenRouteServiceRouting] Response: HTTP ${response.statusCode}, '
+      '${response.body.length} bytes'
+      '${response.statusCode == 200 ? '' : ' — body: ${_truncate(response.body, 500)}'}',
+    );
 
     if (response.statusCode == 429) {
       throw RoutingException(
         RoutingErrorType.rateLimited,
         'The routing service is temporarily rate-limited. Please try '
-            'again in a moment.',
+        'again in a moment.',
         cause: response.body,
       );
     }
@@ -161,12 +208,9 @@ class OpenRouteServiceRouting implements RoutingService {
 
     final feature = features.first as Map<String, dynamic>;
     final geometry = feature['geometry'] as Map<String, dynamic>;
-    final coordinates = (geometry['coordinates'] as List)
-        .cast<List<dynamic>>();
+    final coordinates = (geometry['coordinates'] as List).cast<List<dynamic>>();
     final points = coordinates
-        .map(
-          (c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()),
-        )
+        .map((c) => LatLng((c[1] as num).toDouble(), (c[0] as num).toDouble()))
         .toList();
 
     final properties = feature['properties'] as Map<String, dynamic>?;
