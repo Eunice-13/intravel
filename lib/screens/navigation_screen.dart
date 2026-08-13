@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart' as ll;
 import '../theme/app_theme.dart';
 import '../models/location_model.dart';
 import '../models/nav_target.dart';
+import '../models/route_result_model.dart';
 import '../services/routing_service.dart';
 import '../services/tts_service.dart';
 import '../services/gate_selection_service.dart';
@@ -119,15 +120,34 @@ class _NavigationScreenState extends State<NavigationScreen> {
 
   /// Cached waypoints of the current route line (either the walking-path
   /// graph's hop chain, or a direct two-point line as a fallback),
-  /// recomputed whenever [_buildRouteLine] runs. Used as a proxy for
-  /// "turns" in the turn-by-turn view (addendum spec Section 1), since
-  /// this app has no real street-level turn data.
+  /// recomputed whenever [_buildRouteLine] runs. Used as a last-resort
+  /// proxy for "turns" only when [_realRouteSteps] has no real maneuver
+  /// data for the current route (e.g. the ORS fetch failed and this
+  /// fell back to the static graph/straight line).
   List<LatLng>? _routeWaypoints;
 
   /// Index into [_routeWaypoints] of the next waypoint treated as the
-  /// upcoming "turn". Advances as the user's effective position comes
-  /// within range of the current one.
+  /// upcoming "turn" — only used by the [_routeWaypoints] fallback path.
+  /// Advances as the user's effective position comes within range of the
+  /// current one.
   int _nextWaypointIndex = 1;
+
+  /// Real turn-by-turn maneuvers for the currently active real route
+  /// (see [RouteResult.steps]), indexed against [_realRouteWaypoints].
+  /// `null`/empty whenever there's no real route (fallback graph/straight
+  /// line in effect) — in that case, turn-by-turn falls back to the
+  /// waypoint-hop proxy instead, since there's no real maneuver data to
+  /// show. Each step's `way_points` already indexes directly into
+  /// [_realRouteWaypoints], so "next turn" here is an actual decision
+  /// point on the real, street-following route, not just the next raw
+  /// vertex along it.
+  List<RouteStep> _realRouteSteps = const [];
+
+  /// Index into [_realRouteSteps] of the step currently being executed.
+  /// Advances as the user's effective position passes each step's end
+  /// waypoint, mirroring [_nextWaypointIndex]'s role for the fallback
+  /// path.
+  int _currentStepIndex = 0;
 
   /// Cached result of the last [_computeRouteLine] call, keyed by the
   /// [_routeStartPosition] it was computed for. [_buildRouteLine] is
@@ -273,6 +293,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
         _realRouteWaypoints = result.points
             .map((p) => LatLng(p.latitude, p.longitude))
             .toList();
+        _realRouteSteps = result.steps;
+        _currentStepIndex = 0;
         _realRouteFetchedForStart = start;
         _realRouteFailureReason = null;
         // Invalidate the cached polyline so _buildRouteLine picks up the
@@ -300,6 +322,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
         setState(() {
           _realRouteFetchedForStart = start;
           _realRouteFailureReason = reason;
+          // No real route means no real maneuver data either — clear any
+          // steps from a previous successful fetch so turn-by-turn falls
+          // back to the waypoint-hop proxy against whichever fallback
+          // line _buildRouteLine ends up using, instead of showing stale
+          // steps computed against a route that's no longer displayed.
+          _realRouteSteps = const [];
+          _currentStepIndex = 0;
         });
       }
     } finally {
@@ -960,15 +989,37 @@ class _NavigationScreenState extends State<NavigationScreen> {
     return Icons.north_west_rounded;
   }
 
-  // ─── Turn-by-turn proxy data (addendum spec Section 1) ────────────────────
-  // This app has no real street/turn dataset, so "next turn" and "current
-  // street" are approximated from the shared walking-path graph: the next
-  // unreached waypoint on the route stands in for the next turn, and the
-  // nearest named graph node stands in for the current street (per the
-  // user-confirmed design decision to use this proxy over reverse
-  // geocoding).
+  // ─── Turn-by-turn data (addendum spec Section 1) ───────────────────────
+  // Prefers real maneuver data from the routing provider (_realRouteSteps,
+  // populated only when a real ORS route was fetched — see
+  // _fetchRealRoute) so each reported "next turn" corresponds to an actual
+  // walkable decision point on the real, street-following route. Only
+  // when there's no real route in effect (ORS fetch failed, so
+  // _buildRouteLine fell back to the static walking-path graph or a
+  // direct line) does this fall back to the coarser waypoint-hop proxy —
+  // the next unreached waypoint on whichever fallback line is showing,
+  // and the nearest named graph node as a "current street" stand-in (per
+  // the user-confirmed design decision to use that proxy over reverse
+  // geocoding). A route built from a fallback source has no real step
+  // data to show turns for in the first place, so this distinction isn't
+  // optional — it's what keeps "next turn" honest about what it's
+  // actually derived from.
+
+  bool get _hasRealSteps => _realRouteSteps.isNotEmpty;
+
+  RouteStep? get _currentStep {
+    if (!_hasRealSteps) return null;
+    final index = _currentStepIndex.clamp(0, _realRouteSteps.length - 1);
+    return _realRouteSteps[index];
+  }
 
   LatLng? get _nextTurnPoint {
+    final step = _currentStep;
+    final realWaypoints = _realRouteWaypoints;
+    if (step != null && realWaypoints != null) {
+      final index = step.wayPointEnd.clamp(0, realWaypoints.length - 1);
+      return realWaypoints[index];
+    }
     final waypoints = _routeWaypoints;
     if (waypoints == null || waypoints.length < 2) {
       return _navTarget?.coordinates;
@@ -978,6 +1029,9 @@ class _NavigationScreenState extends State<NavigationScreen> {
   }
 
   bool get _nextTurnIsFinalDestination {
+    if (_hasRealSteps) {
+      return _currentStepIndex >= _realRouteSteps.length - 1;
+    }
     final waypoints = _routeWaypoints;
     if (waypoints == null || waypoints.length < 2) return true;
     return _nextWaypointIndex >= waypoints.length - 1;
@@ -1022,6 +1076,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
     if (userPoint == null || _navTarget == null) {
       return 'Waiting for your location…';
     }
+    final step = _currentStep;
+    if (step != null && step.instruction.isNotEmpty) {
+      // Real maneuver text from the routing provider (e.g. "Turn sharp
+      // left onto Esplanade - Fort Santiago"), not an approximation.
+      return step.instruction;
+    }
     final d = _distanceToNextTurnMeters ?? 0;
     if (_nextTurnIsFinalDestination) {
       if (d < 15) return 'You have arrived at ${_navTarget!.name}';
@@ -1030,24 +1090,52 @@ class _NavigationScreenState extends State<NavigationScreen> {
     return 'Continue toward the next waypoint';
   }
 
-  /// "Current street" proxy (addendum spec Section 1 / user-confirmed
-  /// decision): nearest named node in the shared walking-path graph, e.g.
-  /// "Near Fort Santiago", falling back to a generic district label when
-  /// nothing is close enough or the graph hasn't loaded.
+  /// "Current street" — the real step's own street/path name when a real
+  /// route with maneuver data is active and that step actually has one;
+  /// otherwise the nearest named node in the shared walking-path graph
+  /// (e.g. "Near Fort Santiago") as a proxy, falling back to a generic
+  /// district label when nothing is close enough or the graph hasn't
+  /// loaded.
   String _currentStreetProxy() {
+    final step = _currentStep;
+    if (step != null && step.hasRealName) return step.name;
     final userPoint = _effectiveUserLatLng;
     if (userPoint == null) return 'Intramuros';
     final node = WalkingPathService().nearestLandmarkTo(userPoint);
     return node != null ? 'Near ${node.name}' : 'Intramuros';
   }
 
-  /// Advances [_nextWaypointIndex] as the effective position comes within
-  /// [_waypointArrivalThresholdMeters] of the currently-tracked waypoint,
-  /// so "next turn" always refers to an upcoming, not-yet-reached point.
+  /// Advances [_currentStepIndex] (real steps) or [_nextWaypointIndex]
+  /// (fallback proxy) as the effective position passes each one's end
+  /// point, so "next turn" always refers to an upcoming, not-yet-reached
+  /// maneuver/waypoint rather than one the user has already walked past.
   void _updateWaypointProgress() {
     final userPoint = _effectiveUserLatLng;
+    if (userPoint == null) return;
+
+    if (_hasRealSteps) {
+      final realWaypoints = _realRouteWaypoints;
+      if (realWaypoints == null) return;
+      while (_currentStepIndex < _realRouteSteps.length - 1) {
+        final endIndex = _realRouteSteps[_currentStepIndex].wayPointEnd.clamp(
+          0,
+          realWaypoints.length - 1,
+        );
+        final endPoint = realWaypoints[endIndex];
+        final distance = Geolocator.distanceBetween(
+          userPoint.latitude,
+          userPoint.longitude,
+          endPoint.latitude,
+          endPoint.longitude,
+        );
+        if (distance >= _waypointArrivalThresholdMeters) break;
+        _currentStepIndex++;
+      }
+      return;
+    }
+
     final waypoints = _routeWaypoints;
-    if (userPoint == null || waypoints == null || waypoints.length < 2) {
+    if (waypoints == null || waypoints.length < 2) {
       return;
     }
     while (_nextWaypointIndex < waypoints.length - 1 &&
@@ -1204,6 +1292,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     if (userPoint != null) {
       _routeStartPosition = userPoint;
       _nextWaypointIndex = 1;
+      _currentStepIndex = 0;
       if (_isTurnByTurn) {
         _followUserIfTurnByTurn(userPoint);
       } else {

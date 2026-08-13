@@ -43,3 +43,9 @@ flutter:
     - assets/intravel/assets/home/
     - assets/intravel/vendor/leaflet/
     - assets/intravel/vendor/leaflet/images/
+    # Bundled as a fallback so ORS_API_KEY loads automatically no matter
+    # how the app is launched (IDE Run button, hot restart, a plain
+    # `flutter run` with no flags) — see lib/services/routing_service.dart.
+    # env.json itself stays gitignored; only this path declaration is
+    # committed.
+    - env.json

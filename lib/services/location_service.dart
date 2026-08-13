@@ -2569,12 +2569,26 @@ class LocationService {
   static final Map<String, List<AccessibilityFeature>> _accessibilityBySiteId =
       {
         'fort-santiago': [
+          // Cross-checked against OSM/Nominatim: Fort Santiago's real
+          // footprint is bounded by roughly lat 14.5935-14.5954,
+          // lng 120.9689-120.9712 (Nominatim way/331784458, the fort
+          // gate: 14.5938751, 120.9706147 -- the same source used for
+          // this site's own verified main-pin coordinate below). The
+          // previous af1/af3 coordinates (lng ~120.9720-120.9722) sat
+          // east of that boundary, on/across the Pasig River bank, not
+          // inside the fort. These are generic accessibility-type
+          // markers (not individually-named Google Maps listings), so
+          // rather than inventing a specific verified business location,
+          // they're re-anchored inside the fort's real, verified
+          // footprint: af1 at the main gate/entrance itself (matching
+          // this site's own coordinates field), af3 at a distinct point
+          // well within the same footprint.
           const AccessibilityFeature(
             id: 'af1',
             name: 'Ramps & Elevators',
             description: 'Located near Main Entrance',
             type: AccessibilityType.ramps,
-            location: LatLng(14.5955, 120.9720),
+            location: LatLng(14.5939, 120.9707),
           ),
           const AccessibilityFeature(
             id: 'af2',
@@ -2587,16 +2601,21 @@ class LocationService {
             name: 'Vegetarian',
             description: '67m — open now',
             type: AccessibilityType.vegetarian,
-            location: LatLng(14.5948, 120.9722),
+            location: LatLng(14.5943, 120.9702),
           ),
         ],
         'san-agustin-church': [
+          // Verified against Nominatim way/89571506 (San Agustin Church):
+          // lat 14.5889053, lng bounding box 120.9750324-120.9756576.
+          // The previous coordinate was already inside this footprint
+          // (right at its western edge); nudged slightly east so the
+          // pin sits unambiguously on the building rather than its edge.
           const AccessibilityFeature(
             id: 'af4',
             name: 'Ramps & Elevators',
             description: 'Ramp at side entrance',
             type: AccessibilityType.ramps,
-            location: LatLng(14.5889, 120.9750),
+            location: LatLng(14.5889, 120.9752),
           ),
           const AccessibilityFeature(
             id: 'af5',
@@ -2606,12 +2625,17 @@ class LocationService {
           ),
         ],
         'manila-cathedral': [
+          // Verified against Nominatim/OSM way/331777144 (Manila
+          // Cathedral): lat 14.5915057, lng 120.9736106. Previous
+          // coordinate was already close (~25m off, within the
+          // building); tightened to match, biased slightly south toward
+          // Plaza Roma where the cathedral's main entrance faces.
           const AccessibilityFeature(
             id: 'af6',
             name: 'Ramps & Elevators',
             description: 'Wheelchair accessible main entrance',
             type: AccessibilityType.ramps,
-            location: LatLng(14.5917, 120.9735),
+            location: LatLng(14.5914, 120.9736),
           ),
         ],
       };

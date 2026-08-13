@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
+import '../models/nav_target.dart';
 import '../models/poi_model.dart';
 import '../models/route_result_model.dart';
 import '../services/poi_service.dart';
 import '../services/routing_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/location_photo.dart';
+import '../widgets/nav_flow_launcher.dart';
 
 /// Standalone POI map: Google Maps base layer (Android), category-coded
 /// POI markers sourced from the bundled `pois.json` asset (see
@@ -196,6 +198,28 @@ class _OsmPoiMapScreenState extends State<OsmPoiMapScreen> {
     );
   }
 
+  /// Hands off to the exact same shared turn-by-turn experience every
+  /// other "Navigate" button in the app uses ([NavFlowLauncher] →
+  /// [NavigationScreen]) — real ORS steps, the maneuver icon/distance/
+  /// street-name card, live heading-following camera — rather than a
+  /// second, simplified reimplementation living only on this screen.
+  /// [NavigationScreen] always routes from the user's live position (or
+  /// selected gate) to the target, so the previewed [_startPoi] here is
+  /// only used to draw the preview polyline above; the actual
+  /// turn-by-turn session's destination is [_endPoi].
+  void _startTurnByTurn() {
+    final end = _endPoi;
+    if (end == null) return;
+    NavFlowLauncher.startWithTarget(
+      context,
+      target: NavTarget(
+        name: end.name,
+        coordinates: _toLatLng(end.coordinates),
+        imagePath: end.photoPath.isEmpty ? null : end.photoPath,
+      ),
+    );
+  }
+
   void _clearRoute() {
     setState(() {
       _startPoi = null;
@@ -243,8 +267,20 @@ class _OsmPoiMapScreenState extends State<OsmPoiMapScreen> {
     }
   }
 
+  /// While a route is active (loaded, or in flight), only the start/end
+  /// pins should be shown — every other POI pin is hidden so it doesn't
+  /// clutter the route line, making it harder to actually follow. Normal
+  /// browsing (no route requested/loaded yet, or after the user clears
+  /// it via [_clearRoute]) restores the full pin set as before.
+  bool get _isRouteActive =>
+      _routeState == _RouteLoadState.loading ||
+      _routeState == _RouteLoadState.loaded;
+
   Set<Marker> _buildMarkers() {
-    return _pois.map((poi) {
+    final poisToShow = _isRouteActive
+        ? _pois.where((poi) => poi.id == _startPoi?.id || poi.id == _endPoi?.id)
+        : _pois;
+    return poisToShow.map((poi) {
       final isStart = poi.id == _startPoi?.id;
       final isEnd = poi.id == _endPoi?.id;
       final icon = isStart
@@ -305,7 +341,9 @@ class _OsmPoiMapScreenState extends State<OsmPoiMapScreen> {
         actions: [
           if (_poiState == _PoiLoadState.loaded)
             IconButton(
-              icon: Icon(_showListFallback ? Icons.map_outlined : Icons.list_rounded),
+              icon: Icon(
+                _showListFallback ? Icons.map_outlined : Icons.list_rounded,
+              ),
               tooltip: _showListFallback ? 'Show map' : 'Show list',
               onPressed: () =>
                   setState(() => _showListFallback = !_showListFallback),
@@ -468,7 +506,11 @@ class _OsmPoiMapScreenState extends State<OsmPoiMapScreen> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.directions_walk_rounded, size: 16, color: colors.forest),
+                Icon(
+                  Icons.directions_walk_rounded,
+                  size: 16,
+                  color: colors.forest,
+                ),
                 const SizedBox(width: 6),
                 Text(
                   '${_route!.distanceLabel} · ${_route!.durationLabel}',
@@ -479,6 +521,34 @@ class _OsmPoiMapScreenState extends State<OsmPoiMapScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            // Hands off to the same shared turn-by-turn experience every
+            // other "Navigate" button in the app uses — real ORS steps,
+            // maneuver card, live heading-following camera — rather than
+            // a second, simplified version confined to this screen. The
+            // polyline preview above stays as a quick visual aid; this
+            // is the actual guided navigation entry point.
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _startTurnByTurn,
+                icon: Icon(Icons.navigation_outlined, color: colors.forest),
+                label: Text(
+                  'Start turn-by-turn navigation',
+                  style: TextStyle(
+                    color: colors.forest,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: colors.forest),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
           ],
         ],
@@ -613,7 +683,11 @@ class _ErrorState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 40, color: Colors.red),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 40,
+              color: Colors.red,
+            ),
             const SizedBox(height: 12),
             Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
@@ -652,7 +726,11 @@ class _PoiListFallback extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                const Icon(Icons.warning_amber_rounded, color: Color(0xFFB25E00), size: 18),
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFB25E00),
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -686,7 +764,10 @@ class _PoiListFallback extends StatelessWidget {
                         : LocationPhoto(imagePath: poi.photoPath),
                   ),
                 ),
-                title: Text(poi.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                title: Text(
+                  poi.name,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 subtitle: Text(poi.category.label),
                 onTap: () => onPoiTap(poi),
               );
