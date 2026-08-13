@@ -27,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
     {'key': 'Museums', 'label': 'Museums'},
     {'key': 'Churches', 'label': 'Churches'},
     {'key': 'Parks', 'label': 'Parks'},
+    {'key': 'Schools', 'label': 'Schools'},
   ];
 
   List<LocationModel> get _visibleSites {
@@ -50,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       'Museums': 'Museums',
       'Churches': 'Churches',
       'Parks': 'Parks',
+      'Schools': 'Schools',
     };
     return labels[_activeFilter] ?? 'All Locations';
   }
@@ -271,6 +273,8 @@ class _CategoryChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SizedBox(
       height: 30,
       child: ListView.separated(
@@ -286,12 +290,14 @@ class _CategoryChips extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isActive ? const Color(0xFF1D6B4A) : colors.card,
+                color: isActive
+                    ? (isDark ? colors.accent : const Color(0xFF1D6B4A))
+                    : colors.card,
                 borderRadius: BorderRadius.circular(25),
                 border: Border.all(
                   color: isActive
-                      ? const Color(0xFF1D6B4A)
-                      : const Color(0xFFE5E7EB),
+                      ? (isDark ? colors.accent : const Color(0xFF1D6B4A))
+                      : (isDark ? colors.line : const Color(0xFFE5E7EB)),
                 ),
               ),
               child: Text(
@@ -299,9 +305,11 @@ class _CategoryChips extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: isActive
-                      ? const Color(0xFFF7FFFF)
-                      : const Color(0xFF555555),
+                  color: isDark
+                      ? Colors.white
+                      : (isActive
+                            ? const Color(0xFFF7FFFF)
+                            : const Color(0xFF555555)),
                 ),
               ),
             ),

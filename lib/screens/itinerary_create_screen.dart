@@ -84,28 +84,34 @@ class _ItineraryCreateScreenState extends State<ItineraryCreateScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '— NEW ITINERARY',
-                            style: TextStyle(
-                              color: colors.accent,
-                              fontSize: 12,
-                              letterSpacing: 1.1,
+                      const SizedBox(width: 20),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          left: 90,
+                        ), // Adjust this value to push text right
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'NEW ITINERARY —',
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                color: colors.accent,
+                                fontSize: 12,
+                                letterSpacing: 1.1,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Build Your Trip',
-                            style: TextStyle(
-                              fontFamily: AppTheme.serifFont,
-                              fontSize: 27,
-                              color: colors.ink,
+                            const SizedBox(height: 4),
+                            Text(
+                              'Build Your Trip',
+                              style: TextStyle(
+                                fontFamily: AppTheme.serifFont,
+                                fontSize: 27,
+                                color: colors.ink,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -128,6 +134,7 @@ class _ItineraryCreateScreenState extends State<ItineraryCreateScreen> {
                         border: InputBorder.none,
                         hintText: 'Name your itinerary (e.g. "My Day 1")',
                         hintStyle: TextStyle(fontSize: 14, color: colors.muted),
+                        contentPadding: const EdgeInsets.only(top: 15),
                       ),
                     ),
                   ),
