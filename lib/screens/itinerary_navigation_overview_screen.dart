@@ -29,6 +29,7 @@ class _ItineraryNavigationOverviewScreenState
     extends State<ItineraryNavigationOverviewScreen> {
   GoogleMapController? _mapController;
   int? _selectedLegIndex;
+  MapType _mapType = MapType.normal;
 
   Set<Marker> _buildMarkers() {
     return {
@@ -198,6 +199,7 @@ class _ItineraryNavigationOverviewScreenState
               child: Stack(
                 children: [
                   GoogleMap(
+                    mapType: _mapType,
                     initialCameraPosition: CameraPosition(
                       target: widget.stops.first.coordinates,
                       zoom: 15,
@@ -227,6 +229,18 @@ class _ItineraryNavigationOverviewScreenState
                       onNavigate: () => _openLiveGuidance(
                         _selectedLegIndex == null ? 0 : _selectedLegIndex! + 1,
                       ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 14,
+                    right: 20,
+                    child: _MapLayerToggleButton(
+                      isSatelliteView: _mapType == MapType.satellite,
+                      onToggle: () => setState(() {
+                        _mapType = _mapType == MapType.satellite
+                            ? MapType.normal
+                            : MapType.satellite;
+                      }),
                     ),
                   ),
                 ],
@@ -480,6 +494,64 @@ class _ItineraryStopCard extends StatelessWidget {
                   color: Colors.white,
                   size: 17,
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Map Layer Toggle Button ────────────────────────────────────────────────
+// Standard/satellite view switch, wired to GoogleMap's native `mapType`
+// property. Visually matches the app's existing black accessibility-mode
+// pill style (see `_AccessibilityModeButton` in navigation_screen.dart),
+// sized down for a floating map control.
+
+class _MapLayerToggleButton extends StatelessWidget {
+  final bool isSatelliteView;
+  final VoidCallback onToggle;
+
+  const _MapLayerToggleButton({
+    required this.isSatelliteView,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF050505),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSatelliteView
+                  ? Icons.map_outlined
+                  : Icons.satellite_alt_outlined,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isSatelliteView ? 'Standard' : 'Satellite',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
           ],

@@ -5,7 +5,10 @@ import '../models/location_model.dart';
 import '../services/tts_service.dart';
 import '../services/location_service.dart';
 import '../services/saved_places_service.dart';
+import '../services/review_service.dart';
+import '../widgets/location_photo.dart';
 import 'navigation_screen.dart';
+import 'review_form_screen.dart';
 
 /// Location details screen. Layout (hero + facts + history + highlights +
 /// visit note + related places + save button) is ported from the
@@ -25,24 +28,61 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
   final TtsService _ttsService = TtsService();
   bool get _isSaved => SavedPlacesService.instance.isSaved(widget.location.id);
 
-  ImageProvider _resolveImage(String path) {
-    return path.startsWith('http')
-        ? NetworkImage(path)
-        : AssetImage(path) as ImageProvider;
-  }
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: SavedPlacesService.instance,
-      builder: (context, _) => _buildScaffold(context),
+      builder: (context, _) => AnimatedBuilder(
+        animation: ReviewService.instance,
+        builder: (context, _) => _buildScaffold(context),
+      ),
     );
+  }
+
+  /// This location's full review list: the hand-curated/seeded reviews
+  /// from [LocationService] merged with any reviews the user has actually
+  /// submitted via [ReviewService] (spec Section 7.2 — new reviews append
+  /// into the same list rather than being shown as a separate "user
+  /// reviews" section), newest-first.
+  List<Review> get _allReviews {
+    final userReviews = ReviewService.instance.reviewsForLocation(
+      widget.location.id,
+    );
+    return [...userReviews, ...widget.location.reviews];
+  }
+
+  /// Average rating across [_allReviews]. Falls back to the location's
+  /// existing default (spec's intentional 4.8 placeholder for zero-review
+  /// locations, computed in `LocationService._buildLocation`) when there
+  /// are still no reviews at all — this only affects what's *displayed*
+  /// here; it does not change that default logic itself.
+  double get _displayedRating {
+    final reviews = _allReviews;
+    if (reviews.isEmpty) return widget.location.rating;
+    final average =
+        reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
+    return double.parse(average.toStringAsFixed(1));
+  }
+
+  Future<void> _openReviewForm(
+    BuildContext context,
+    LocationModel location,
+  ) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReviewFormScreen(location: location),
+      ),
+    );
+    // ReviewService's ChangeNotifier + the AnimatedBuilder in build()
+    // already refresh this screen once the submission completes; no
+    // explicit setState needed here.
   }
 
   Widget _buildScaffold(BuildContext context) {
     final location = widget.location;
     final colors = AppColors.of(context);
     final related = LocationService().getRelatedLocations(location);
+    final allReviews = _allReviews;
 
     return Scaffold(
       backgroundColor: colors.paper,
@@ -98,19 +138,7 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
                   background: Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image(
-                        image: _resolveImage(location.imageUrl),
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Color(0xFF264B3C), Color(0xFF0D2820)],
-                            ),
-                          ),
-                        ),
-                      ),
+                      LocationPhoto(imagePath: location.imageUrl),
                       Container(
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
@@ -437,7 +465,7 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
                               color: colors.ink,
                             ),
                           ),
-                          if (location.reviewCount > 0)
+                          if (allReviews.isNotEmpty)
                             Row(
                               children: [
                                 const Icon(
@@ -447,7 +475,7 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  '${location.rating}',
+                                  '$_displayedRating',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
@@ -455,7 +483,7 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
                                   ),
                                 ),
                                 Text(
-                                  ' (${location.reviewCount})',
+                                  ' (${allReviews.length})',
                                   style: TextStyle(
                                     fontSize: 13,
                                     color: colors.muted,
@@ -466,13 +494,64 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      if (location.reviews.isEmpty)
+
+                      // Location's single photo, shown once at the top of
+                      // the review section (spec Section 7.3) — reuses the
+                      // same canonical image as the hero and pin popups,
+                      // not a separate asset.
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: SizedBox(
+                          height: 130,
+                          width: double.infinity,
+                          child: LocationPhoto(
+                            imagePath: location.imageUrl,
+                            fallbackColor: colors.forest.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      GestureDetector(
+                        onTap: () => _openReviewForm(context, location),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          decoration: BoxDecoration(
+                            color: colors.forest,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.edit_outlined,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Leave a Review',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (allReviews.isEmpty)
                         Text(
                           'No reviews yet for this location.',
                           style: TextStyle(fontSize: 13, color: colors.muted),
                         )
                       else
-                        ...location.reviews.map(
+                        ...allReviews.map(
                           (review) =>
                               _ReviewCard(colors: colors, review: review),
                         ),
@@ -738,12 +817,6 @@ class _RelatedPlaceCard extends StatelessWidget {
 
   const _RelatedPlaceCard({required this.colors, required this.location});
 
-  ImageProvider _resolveImage(String path) {
-    return path.startsWith('http')
-        ? NetworkImage(path)
-        : AssetImage(path) as ImageProvider;
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -767,11 +840,9 @@ class _RelatedPlaceCard extends StatelessWidget {
             SizedBox(
               width: 58,
               height: 72,
-              child: Image(
-                image: _resolveImage(location.imageUrl),
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) =>
-                    Container(color: colors.forest.withValues(alpha: 0.5)),
+              child: LocationPhoto(
+                imagePath: location.imageUrl,
+                fallbackColor: colors.forest.withValues(alpha: 0.5),
               ),
             ),
             const SizedBox(width: 14),

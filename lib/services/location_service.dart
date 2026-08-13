@@ -2055,7 +2055,6 @@ class LocationService {
         rating: 5.0,
         text:
             'The seafront bastion is strikingly photogenic at sunset. You can trace the old wall line from here all the way south.',
-        relativeTime: '1 week ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 7)),
       ),
       Review(
@@ -2065,7 +2064,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Small but atmospheric. A quiet corner of Intramuros most tourists miss.',
-        relativeTime: '3 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 21)),
       ),
       Review(
@@ -2075,7 +2073,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Great spot to appreciate the coastal defence system. The stonework is well-preserved.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
       Review(
@@ -2085,7 +2082,6 @@ class LocationService {
         rating: 5.0,
         text:
             'Standing on the seafront wall here gives you perspective on how massive the old fortifications were.',
-        relativeTime: '5 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 35)),
       ),
     ],
@@ -2097,7 +2093,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Part of the interconnected seafront defences. The coastal views from here are lovely.',
-        relativeTime: '4 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 4)),
       ),
       Review(
@@ -2107,7 +2102,6 @@ class LocationService {
         rating: 5.0,
         text:
             'Fascinating to see how this links up with San Juan and the other coastal bastions.',
-        relativeTime: '2 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 14)),
       ),
       Review(
@@ -2117,7 +2111,6 @@ class LocationService {
         rating: 4.0,
         text:
             'An underrated fortification. Quiet, scenic, and surprisingly intact.',
-        relativeTime: '5 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 35)),
       ),
     ],
@@ -2129,7 +2122,6 @@ class LocationService {
         rating: 4.0,
         text:
             'The compact redoubt shape is unusual. You can still see where ammunition was stored centuries ago.',
-        relativeTime: '6 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 6)),
       ),
       Review(
@@ -2139,7 +2131,6 @@ class LocationService {
         rating: 5.0,
         text:
             'A hidden gem on the southwestern wall. The heritage ruin has real atmosphere.',
-        relativeTime: '3 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 21)),
       ),
       Review(
@@ -2149,7 +2140,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Interesting stop for anyone studying colonial-era military architecture.',
-        relativeTime: '6 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 42)),
       ),
     ],
@@ -2161,7 +2151,6 @@ class LocationService {
         rating: 5.0,
         text:
             'One of the original 1593 gates! The Parian market history makes this gate unique among all the entrances.',
-        relativeTime: '2 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 2)),
       ),
       Review(
@@ -2171,7 +2160,6 @@ class LocationService {
         rating: 4.0,
         text:
             'The restoration work done between 1967 and 1982 is impressive. The revellin adds a dramatic forward-defence dimension.',
-        relativeTime: '2 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 14)),
       ),
       Review(
@@ -2181,7 +2169,6 @@ class LocationService {
         rating: 5.0,
         text:
             'I loved learning about the Chinese merchant connection. The gate tells a story about trade and diversity in old Manila.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
       Review(
@@ -2191,7 +2178,6 @@ class LocationService {
         rating: 4.0,
         text:
             'A living piece of 16th-century architecture. The gate and revellin together are very photogenic.',
-        relativeTime: '5 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 35)),
       ),
     ],
@@ -2203,7 +2189,6 @@ class LocationService {
         rating: 5.0,
         text:
             'The Queen Isabel statue in front makes it unmistakable. The last gate ever built in the walls—opened in 1861.',
-        relativeTime: '3 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 3)),
       ),
       Review(
@@ -2213,7 +2198,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Restored beautifully in 1966 after wartime damage. Love the contrast between old stonework and the city beyond.',
-        relativeTime: '2 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 14)),
       ),
       Review(
@@ -2223,7 +2207,6 @@ class LocationService {
         rating: 5.0,
         text:
             'Standing beneath the arch, you can imagine the crowds heading toward Binondo and the Bridge of Spain.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
       Review(
@@ -2233,7 +2216,6 @@ class LocationService {
         rating: 4.0,
         text:
             'The Isabel II monument adds a regal touch to an already impressive gateway.',
-        relativeTime: '6 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 42)),
       ),
     ],
@@ -2245,7 +2227,6 @@ class LocationService {
         rating: 5.0,
         text:
             'Attended a cultural performance here—the venue has wonderful acoustics and an intimate atmosphere.',
-        relativeTime: '5 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 5)),
       ),
       Review(
@@ -2255,7 +2236,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Great space for events in the heart of the walled city. The heritage setting makes every show special.',
-        relativeTime: '3 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 21)),
       ),
       Review(
@@ -2265,7 +2245,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Caught a community event celebrating Filipino heritage. The programming is always thoughtful.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
     ],
@@ -2277,7 +2256,6 @@ class LocationService {
         rating: 5.0,
         text:
             'A touching tribute to the Jesuit who spent his life rebuilding Intramuros after the war. Deeply inspiring.',
-        relativeTime: '4 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 4)),
       ),
       Review(
@@ -2287,7 +2265,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Small museum but packed with meaning. The story of preservation after WWII destruction is powerful.',
-        relativeTime: '2 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 14)),
       ),
       Review(
@@ -2297,7 +2274,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Wonderful to learn about the people behind Intramuros restoration. The photos and documents are well-curated.',
-        relativeTime: '5 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 35)),
       ),
     ],
@@ -2309,7 +2285,6 @@ class LocationService {
         rating: 5.0,
         text:
             'Free admission and rotating exhibits by emerging Filipino artists. Every visit is different.',
-        relativeTime: '6 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 6)),
       ),
       Review(
@@ -2319,7 +2294,6 @@ class LocationService {
         rating: 4.0,
         text:
             'A welcome creative oasis in the middle of historic Intramuros. The young artists featured are talented.',
-        relativeTime: '3 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 21)),
       ),
       Review(
@@ -2329,7 +2303,6 @@ class LocationService {
         rating: 5.0,
         text:
             'Since 2009 this gallery has championed new voices in Filipino art. Proud of our NCCA.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
     ],
@@ -2341,7 +2314,6 @@ class LocationService {
         rating: 5.0,
         text:
             'The Rizal narrative brought to life through immersive light shows. I felt like I was there in 1896.',
-        relativeTime: '2 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 2)),
       ),
       Review(
@@ -2351,7 +2323,6 @@ class LocationService {
         rating: 5.0,
         text:
             'The guided audio-visual journey is absolutely captivating. Best museum experience in Intramuros.',
-        relativeTime: '2 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 14)),
       ),
       Review(
@@ -2361,7 +2332,6 @@ class LocationService {
         rating: 4.0,
         text:
             'The narrated presentation about Philippine history is emotionally powerful. Allow at least an hour.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
       Review(
@@ -2371,7 +2341,6 @@ class LocationService {
         rating: 5.0,
         text:
             'If you visit only one museum in Intramuros, make it this one. The Rizal story has never been told better.',
-        relativeTime: '6 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 42)),
       ),
     ],
@@ -2383,7 +2352,6 @@ class LocationService {
         rating: 4.0,
         text:
             'A quiet historic landmark that recalls when Intramuros was the mercantile heart of Manila.',
-        relativeTime: '1 week ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 7)),
       ),
       Review(
@@ -2393,7 +2361,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Interesting to think about the commercial history layered under the fortifications and churches.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
       Review(
@@ -2403,7 +2370,6 @@ class LocationService {
         rating: 3.0,
         text:
             'Mostly an exterior stop, but the colonial-period trade history context is worth appreciating.',
-        relativeTime: '6 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 42)),
       ),
     ],
@@ -2415,7 +2381,6 @@ class LocationService {
         rating: 5.0,
         text:
             'The old customs house at Plaza España tells the story of colonial trade and governance in one building.',
-        relativeTime: '3 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 3)),
       ),
       Review(
@@ -2425,7 +2390,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Impressive facade on Soriano Avenue. The Intendencia housed government offices across multiple eras.',
-        relativeTime: '3 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 21)),
       ),
       Review(
@@ -2435,7 +2399,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Standing at the corner of Muralla Street, you can picture the customs inspectors of the Spanish period.',
-        relativeTime: '5 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 35)),
       ),
     ],
@@ -2447,7 +2410,6 @@ class LocationService {
         rating: 4.0,
         text:
             'A pleasant open space for a rest between visiting heritage landmarks. Shaded and peaceful.',
-        relativeTime: '5 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 5)),
       ),
       Review(
@@ -2457,7 +2419,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Part of the planned urban layout of the walled city. A nice quiet stop on Santo Tomas Street.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
       Review(
@@ -2467,7 +2428,6 @@ class LocationService {
         rating: 5.0,
         text:
             'I love how the plazas of Intramuros tell the story of Spanish urban planning. This one is underrated.',
-        relativeTime: '7 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 49)),
       ),
     ],
@@ -2479,7 +2439,6 @@ class LocationService {
         rating: 5.0,
         text:
             'The monument to King Philip II is striking—this is the man the Philippines was named after. A powerful spot.',
-        relativeTime: '2 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 2)),
       ),
       Review(
@@ -2489,7 +2448,6 @@ class LocationService {
         rating: 4.0,
         text:
             'The triangular shape formed by three intersecting streets creates an interesting urban space.',
-        relativeTime: '2 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 14)),
       ),
       Review(
@@ -2499,7 +2457,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Near the Aduana Building and full of colonial-era significance. The Philip II statue is a must-see.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
       Review(
@@ -2509,7 +2466,6 @@ class LocationService {
         rating: 5.0,
         text:
             'Soriano, Solana, and Muralla converge here. The plaza captures the layered history of the walled city.',
-        relativeTime: '6 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 42)),
       ),
     ],
@@ -2521,7 +2477,6 @@ class LocationService {
         rating: 4.0,
         text:
             'A public school inside the walled city—our students walk past centuries of history every day.',
-        relativeTime: '5 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 5)),
       ),
       Review(
@@ -2531,7 +2486,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Unique to see a working public school within the fortified walls of old Manila.',
-        relativeTime: '3 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 21)),
       ),
       Review(
@@ -2541,7 +2495,6 @@ class LocationService {
         rating: 4.0,
         text:
             'The educational presence inside Intramuros keeps the district alive and connected to the community.',
-        relativeTime: '1 month ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 30)),
       ),
     ],
@@ -2553,7 +2506,6 @@ class LocationService {
         rating: 5.0,
         text:
             "LPU's tourism and hospitality program is perfect for Intramuros. The campus buzzes with culinary students.",
-        relativeTime: '4 days ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 4)),
       ),
       Review(
@@ -2563,7 +2515,6 @@ class LocationService {
         rating: 4.0,
         text:
             'Founded by Dr. Jose P. Laurel in 1952. The university carries his vision of accessible education.',
-        relativeTime: '2 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 14)),
       ),
       Review(
@@ -2573,7 +2524,6 @@ class LocationService {
         rating: 4.0,
         text:
             'The Intramuros Consortium connection means LPU students engage directly with heritage preservation.',
-        relativeTime: '5 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 35)),
       ),
       Review(
@@ -2583,7 +2533,6 @@ class LocationService {
         rating: 5.0,
         text:
             'LPU on Muralla Street is where future tourism leaders train surrounded by centuries of history.',
-        relativeTime: '7 weeks ago',
         publishedAt: DateTime.now().subtract(const Duration(days: 49)),
       ),
     ],
