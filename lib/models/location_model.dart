@@ -203,7 +203,6 @@ class Review {
   final String authorPhotoUrl;
   final double rating;
   final String text;
-  final String relativeTime;
   final DateTime publishedAt;
 
   const Review({
@@ -212,9 +211,60 @@ class Review {
     required this.authorPhotoUrl,
     required this.rating,
     required this.text,
-    required this.relativeTime,
     required this.publishedAt,
-  });
+    // Accept existing seeded review data while displaying the current value
+    // from [publishedAt] through the computed [relativeTime] getter below.
+    String? relativeTime,
+  }) : assert(
+         rating >= 1.0 && rating <= 5.0,
+         'Review rating must be between 1.0 and 5.0',
+       );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'authorName': authorName,
+    'authorPhotoUrl': authorPhotoUrl,
+    'rating': rating,
+    'text': text,
+    'publishedAt': publishedAt.toIso8601String(),
+  };
+
+  factory Review.fromJson(Map<String, dynamic> json) {
+    return Review(
+      id: json['id'] as String,
+      authorName: json['authorName'] as String,
+      authorPhotoUrl: json['authorPhotoUrl'] as String? ?? '',
+      rating: (json['rating'] as num).toDouble(),
+      text: json['text'] as String,
+      publishedAt:
+          DateTime.tryParse(json['publishedAt'] as String? ?? '') ??
+          DateTime.now(),
+    );
+  }
+
+  /// Human-readable relative time (e.g. "2 weeks ago"), computed from
+  /// [publishedAt] rather than stored, so it never goes stale relative to
+  /// when it's actually displayed.
+  String get relativeTime {
+    final difference = DateTime.now().difference(publishedAt);
+    if (difference.inDays >= 60) {
+      final months = difference.inDays ~/ 30;
+      return '$months months ago';
+    }
+    if (difference.inDays >= 30) return '1 month ago';
+    if (difference.inDays >= 14) {
+      final weeks = difference.inDays ~/ 7;
+      return '$weeks weeks ago';
+    }
+    if (difference.inDays >= 7) return '1 week ago';
+    if (difference.inDays >= 1) {
+      return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+    }
+    if (difference.inHours >= 1) {
+      return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
+    }
+    return 'Just now';
+  }
 }
 
 class AccessibilityFeature {
@@ -242,6 +292,18 @@ enum AccessibilityType {
   vegetarian,
   restroom,
   parking,
+
+  /// Rest areas / seating available nearby (addendum spec Section 4.2,
+  /// new mode #4 of 6).
+  restAreas,
+
+  /// Priority assistance for persons with disabilities and senior
+  /// citizens (addendum spec Section 4.2, new mode #5 of 6).
+  pwdSeniorPriority,
+
+  /// Turn-by-turn directions narrated with extra descriptive detail for
+  /// low-vision users (addendum spec Section 4.2, new mode #6 of 6).
+  audioDescribedDirections,
 }
 
 class NearbyAmenity {

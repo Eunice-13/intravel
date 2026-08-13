@@ -1,3 +1,5 @@
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+
 class CuratedRoute {
   final String id;
   final String name;
@@ -51,6 +53,18 @@ class TransportOption {
   final String? discountNote;
   final String? legalNote;
 
+  /// Real-world pickup/service coordinates for this transport option
+  /// (addendum spec Section 4.3), verified via web search rather than
+  /// estimated. Null only for services with no single fixed real-world
+  /// point (see [locationLabel] for how that's surfaced instead).
+  final LatLng? coordinates;
+
+  /// Human-readable description of what [coordinates] actually
+  /// represents, shown in Settings before navigating there — e.g. "Plaza
+  /// Roma — Tranvia stop" or "General pickup area" for services without a
+  /// single fixed real-world point.
+  final String locationLabel;
+
   const TransportOption({
     required this.id,
     required this.name,
@@ -58,5 +72,7 @@ class TransportOption {
     required this.pricing,
     this.discountNote,
     this.legalNote,
+    this.coordinates,
+    this.locationLabel = '',
   });
 }
