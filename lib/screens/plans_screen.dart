@@ -3,12 +3,14 @@ import '../theme/app_theme.dart';
 import '../services/route_service.dart';
 import '../services/location_service.dart';
 import '../services/itinerary_service.dart';
+import '../models/itinerary_model.dart';
 import '../models/route_model.dart';
 import '../models/location_model.dart';
 import '../widgets/budget_filter_sheet.dart';
 import 'location_details_screen.dart';
 import 'itinerary_create_screen.dart';
 import 'route_plan_options_screen.dart';
+import 'favorites_screen.dart';
 
 /// Plans screen, ported from the Eunice-branch `#screen-plans` markup and
 /// extended per the addendum spec (Section 3): eyebrow header + filter
@@ -116,21 +118,109 @@ class _PlansScreenState extends State<PlansScreen> {
     );
   }
 
-  /// Opens a centered, receipt-styled dialog summarising every stop across
-  /// all saved itineraries (deduplicated by location, since the same site
-  /// might appear in more than one saved itinerary) with a per-stop price
-  /// and running total — replaces the old free-text "Type your total
-  /// budget" bar with something that reflects what's actually been saved.
+  /// Entry point for the "View Itinerary" button: if the user has no
+  /// saved itineraries at all, shows a quick "No Saved Itineraries yet!"
+  /// message instead of an empty picker/receipt. Otherwise opens a picker
+  /// sheet so the user chooses *which* saved itinerary to view a summary
+  /// for — a combined summary across every itinerary was misleading when
+  /// the same site appeared in more than one, so each itinerary now gets
+  /// its own accurate receipt.
   void _showItineraryReceipt(BuildContext context) {
     final itineraries = ItineraryService.instance.itineraries;
-    final seenIds = <String>{};
-    final lineItems = <({String name, double cost})>[];
-    for (final itinerary in itineraries) {
-      for (final site in ItineraryService.instance.resolveLocations(itinerary)) {
-        if (!seenIds.add(site.id)) continue;
-        lineItems.add((name: site.name, cost: site.budgetRange.min));
-      }
+    if (itineraries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No Saved Itineraries yet!')),
+      );
+      return;
     }
+    if (itineraries.length == 1) {
+      _showReceiptForItinerary(context, itineraries.first);
+      return;
+    }
+    _showItineraryPicker(context, itineraries);
+  }
+
+  /// Bottom sheet letting the user pick which saved itinerary to view a
+  /// cost summary for, shown whenever more than one itinerary is saved.
+  void _showItineraryPicker(
+    BuildContext context,
+    List<ItineraryModel> itineraries,
+  ) {
+    final colors = AppColors.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'View summary for which itinerary?',
+                  style: TextStyle(
+                    fontFamily: AppTheme.serifFont,
+                    fontSize: 18,
+                    color: colors.ink,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: itineraries.length,
+                    itemBuilder: (context, index) {
+                      final itinerary = itineraries[index];
+                      final stopCount =
+                          ItineraryService.instance
+                              .resolveLocations(itinerary)
+                              .length;
+                      return ListTile(
+                        title: Text(
+                          itinerary.name,
+                          style: TextStyle(color: colors.ink),
+                        ),
+                        subtitle: Text(
+                          '$stopCount stop${stopCount == 1 ? '' : 's'}',
+                          style: TextStyle(color: colors.muted),
+                        ),
+                        trailing: Icon(
+                          Icons.receipt_long_rounded,
+                          color: colors.forest,
+                          size: 18,
+                        ),
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          _showReceiptForItinerary(context, itinerary);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Opens a centered, receipt-styled dialog summarising [itinerary]'s
+  /// stops with a per-stop price and running total. Costs use
+  /// [_scaledSiteCost] — the same group-size-scaled figure shown
+  /// everywhere else on this screen — rather than each site's raw,
+  /// Solo-only [LocationModel.budgetRange], which is what made the old
+  /// combined receipt's totals inaccurate.
+  void _showReceiptForItinerary(BuildContext context, ItineraryModel itinerary) {
+    final sites = ItineraryService.instance.resolveLocations(itinerary);
+    final lineItems = sites
+        .map((site) => (name: site.name, cost: _scaledSiteCost(site).min))
+        .toList();
     final total = lineItems.fold<double>(0, (sum, item) => sum + item.cost);
 
     showDialog(
@@ -147,13 +237,16 @@ class _PlansScreenState extends State<PlansScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'ITINERARY',
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1,
+                    Expanded(
+                      child: Text(
+                        itinerary.name.toUpperCase(),
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     GestureDetector(
@@ -161,6 +254,16 @@ class _PlansScreenState extends State<PlansScreen> {
                       child: const Icon(Icons.close, size: 22, color: Colors.grey),
                     ),
                   ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2, bottom: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '$_selectedTraveler · ${lineItems.length} stop${lineItems.length == 1 ? '' : 's'}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ),
                 ),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 10),
@@ -170,7 +273,7 @@ class _PlansScreenState extends State<PlansScreen> {
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 6),
                     child: Text(
-                      'No saved itinerary stops yet.',
+                      'This itinerary has no stops yet.',
                       style: TextStyle(fontSize: 12, color: Colors.grey),
                       textAlign: TextAlign.center,
                     ),
@@ -447,6 +550,14 @@ class _PlansScreenState extends State<PlansScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 9),
+
+              // ─── View Saved Itineraries ─────────────────────────────────
+              // Companion to "Build your own itinerary" above — links
+              // straight to the Itinerary Hub tab of "Your Hub" so saved
+              // itineraries aren't only reachable via Settings → Saved
+              // Places.
+              _ViewSavedItinerariesButton(colors: colors, isDark: isDark),
               const SizedBox(height: 20),
 
               // ─── Curated Routes (spec 3.4) ─────────────────────────────
@@ -790,6 +901,50 @@ class _SiteListCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── View Saved Itineraries Button ──────────────────────────────────────────
+// Smaller companion to the "Build your own itinerary" CTA above — links
+// straight to the Itinerary Hub tab of "Your Hub" so saved itineraries
+// aren't only reachable via Settings → Saved Places.
+
+class _ViewSavedItinerariesButton extends StatelessWidget {
+  final AppColors colors;
+  final bool isDark;
+
+  const _ViewSavedItinerariesButton({
+    required this.colors,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const FavoritesScreen(initialTab: 'Itineraries'),
+          ),
+        );
+      },
+      child: Container(
+        height: 38,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isDark ? colors.card : const Color(0xFFE1EEE5),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Text(
+          'View Saved Itineraries',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: isDark ? colors.ink : colors.forest,
           ),
         ),
       ),
