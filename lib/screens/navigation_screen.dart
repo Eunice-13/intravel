@@ -106,6 +106,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
   bool _pwdSeniorPriorityMode = true;
   bool _audioDescribedDirectionsMode = true;
 
+  // Cafe (WiFi & Sockets) filter toggle (addendum spec 3 Section 1.1) —
+  // defaults to active like the other modes above.
+  bool _cafeMode = true;
+
   final List<_LiveUpdate> _liveUpdates = [];
 
   /// The fixed anchor the active route line and off-route detection are
@@ -523,6 +527,21 @@ class _NavigationScreenState extends State<NavigationScreen> {
         ),
       );
     }
+    // Cafe (WiFi & Sockets) status line (addendum spec 3 Section 1.3):
+    // placed directly under Vegetarian in this feed too, mirroring its
+    // "directly under Vegetarian" placement in the Accessibility Modes
+    // grid — every mode after it (Braille/Voice onward) shifts down one
+    // spot in the feed accordingly.
+    if (_cafeMode) {
+      _liveUpdates.add(
+        const _LiveUpdate(
+          title: 'Cafe (WiFi & Sockets)',
+          subtitle: '3 cafes nearby — WiFi & sockets',
+          type: AccessibilityType.cafe,
+          isActive: true,
+        ),
+      );
+    }
     if (_brailleVoiceMode) {
       _liveUpdates.add(
         const _LiveUpdate(
@@ -589,6 +608,8 @@ class _NavigationScreenState extends State<NavigationScreen> {
         return _pwdSeniorPriorityMode;
       case AccessibilityType.audioDescribedDirections:
         return _audioDescribedDirectionsMode;
+      case AccessibilityType.cafe:
+        return _cafeMode;
       default:
         return true;
     }
@@ -760,8 +781,41 @@ class _NavigationScreenState extends State<NavigationScreen> {
         );
       }
     }
+    // Cafe (WiFi & Sockets) pin highlighting (addendum spec 3 Section 2.1)
+    // — deliberately a separate, independent filter path from
+    // [_activeCategoryFilters]/[_filteredCategoryLocations] above, per
+    // explicit instruction, rather than folding "Cafe" into that
+    // category-filter machinery. Driven solely by [_cafeMode] (the
+    // Accessibility Modes grid toggle), scoped to browse mode like the
+    // other location pins above so it doesn't appear mid-navigation to an
+    // unrelated target.
+    if (_isBrowseMode) {
+      for (final site in _cafeFilteredLocations) {
+        markers.add(_locationPinMarker(site, _getCafeMarkerHue()));
+      }
+    }
     return markers;
   }
+
+  /// Independent Cafe pin filter (addendum spec 3 Section 2.1): returns
+  /// every catalogued Cafe-category location when [_cafeMode] is active,
+  /// or an empty list otherwise. Kept entirely separate from
+  /// [_filteredCategoryLocations]/[_activeCategoryFilters] so toggling the
+  /// existing category filters can never turn Cafe pins on/off, and vice
+  /// versa.
+  List<LocationModel> get _cafeFilteredLocations {
+    if (!_cafeMode) return const [];
+    return LocationService()
+        .getAllLocations()
+        .where((site) => site.category == 'Cafe')
+        .toList();
+  }
+
+  /// Marker hue for Cafe pins (addendum spec 3 Section 2.1), kept as its
+  /// own helper distinct from [_getCategoryMarkerHue] since Cafe pins are
+  /// driven by the independent [_cafeFilteredLocations] path above rather
+  /// than the shared category-filter marker loop.
+  double _getCafeMarkerHue() => BitmapDescriptor.hueMagenta;
 
   /// Builds a marker for a location pin (spec Section 5): tapping it shows
   /// a photo + name bottom sheet (see [_showLocationPinSheet]) instead of
@@ -828,6 +882,33 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              // WiFi / Sockets amenity indicators (addendum spec 3 Section
+              // 2.2) — only rendered for Cafe locations, so the popup for
+              // standard historical sites/landmarks is untouched.
+              if (location.category == 'Cafe') ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    _AmenityChip(
+                      icon: location.hasWifi ? Icons.wifi : Icons.wifi_off,
+                      label: location.hasWifi
+                          ? 'WiFi available'
+                          : 'No WiFi',
+                      available: location.hasWifi,
+                    ),
+                    const SizedBox(width: 8),
+                    _AmenityChip(
+                      icon: location.hasSockets
+                          ? Icons.power
+                          : Icons.power_off,
+                      label: location.hasSockets
+                          ? 'Sockets available'
+                          : 'No sockets',
+                      available: location.hasSockets,
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () {
@@ -925,6 +1006,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
         return BitmapDescriptor.hueYellow;
       case 'Parks':
         return BitmapDescriptor.hueGreen;
+      case 'Cafe':
+        // addendum spec 3 Section 2.1 — matches [_getCafeMarkerHue], kept
+        // here too so any caller that reaches Cafe sites through this
+        // shared helper (rather than the independent [_cafeFilteredLocations]
+        // path) still renders a distinct, consistent pin color.
+        return BitmapDescriptor.hueMagenta;
       default:
         return BitmapDescriptor.hueAzure;
     }
@@ -2011,6 +2098,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
                     // Two-column grid (addendum spec 4.2) — same button
                     // styling as before, just reflowed from a vertical
                     // stack into a 2-across grid to fit all 6 modes.
+                    // Cafe (addendum spec 3 Section 1.1) is inserted at
+                    // index 2 so it sits directly under Vegetarian
+                    // (row 2, column 1); every mode after it shifts down
+                    // one slot.
                     GridView.count(
                       crossAxisCount: 2,
                       shrinkWrap: true,
@@ -2026,6 +2117,24 @@ class _NavigationScreenState extends State<NavigationScreen> {
                           isActive: _vegetarianMode,
                           onToggle: () => setState(() {
                             _vegetarianMode = !_vegetarianMode;
+                            _rebuildLiveUpdates();
+                          }),
+                        ),
+                        // Cafe (WiFi & Sockets) — addendum spec 3 Section
+                        // 1.1/1.2: placed directly under Vegetarian, styled
+                        // identically to every other mode button in this
+                        // grid, including the shared light-green active
+                        // background (no per-instance color override) —
+                        // Cafe's distinct light-brown treatment lives in
+                        // the Live Updates feed instead (see
+                        // _LiveUpdateCard._iconBg).
+                        _AccessibilityModeButton(
+                          colors: colors,
+                          icon: Icons.local_cafe_outlined,
+                          label: 'Cafe (WiFi & Sockets)',
+                          isActive: _cafeMode,
+                          onToggle: () => setState(() {
+                            _cafeMode = !_cafeMode;
                             _rebuildLiveUpdates();
                           }),
                         ),
@@ -2441,12 +2550,25 @@ class _LiveUpdateCard extends StatelessWidget {
         return Icons.accessible_forward_rounded;
       case AccessibilityType.audioDescribedDirections:
         return Icons.record_voice_over_outlined;
+      case AccessibilityType.cafe:
+        // Same glyph as the Cafe button in Accessibility Modes (addendum
+        // spec 3 Section 1.1/1.2), so the same feature reads identically
+        // in both places.
+        return Icons.local_cafe_outlined;
       default:
         return Icons.info_outline;
     }
   }
 
   Color _iconBg(int index) {
+    // Cafe (WiFi & Sockets) gets its own fixed light-brown icon
+    // background here in the Live Updates feed, regardless of its
+    // position in the cycle below — distinct from the Accessibility
+    // Modes grid, where Cafe's button now uses the shared light-green
+    // active color like every other mode.
+    if (update.type == AccessibilityType.cafe) {
+      return const Color(0xFFEAD9C9);
+    }
     const colorsCycle = [
       Color(0xFFB7EDB4),
       Color(0xFFFAC0C3),
@@ -2709,6 +2831,44 @@ class _AccessibilityModeButton extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Small boolean amenity indicator chip (addendum spec 3 Section 2.2),
+/// used in [_NavigationScreenState._showLocationPinSheet] to show WiFi and
+/// Sockets availability for Cafe locations only. Deliberately minimal —
+/// icon + short label, colored green/grey to read as available/unavailable
+/// at a glance without introducing new design language.
+class _AmenityChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool available;
+
+  const _AmenityChip({
+    required this.icon,
+    required this.label,
+    required this.available,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = available ? AppTheme.forest : Colors.grey;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 11, color: color)),
+        ],
       ),
     );
   }

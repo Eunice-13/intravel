@@ -15,6 +15,7 @@ class _FakeHttpClient extends http.BaseClient {
   final String responseBody;
   final int statusCode;
 
+  // ignore: unused_element_parameter
   _FakeHttpClient({required this.responseBody, this.statusCode = 200});
 
   @override
