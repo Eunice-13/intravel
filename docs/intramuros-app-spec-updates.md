@@ -1,7 +1,7 @@
 # Intramuros App — New Updates Spec (for Kiro AI)
 
 ## Context
-This is a **standalone addendum** covering only the latest round of requested changes. It assumes the base app and the earlier full spec (`intramuros-app-spec-for-kiro.md`) are already in place — read that file first for context on pages, components, and prior decisions (gate selection, nav page filters, itinerary structure, etc.) before implementing anything here, since several items below extend those existing features.
+This is a **standalone addendum** covering only the latest round of requested changes. It assumes the base app and the earlier full spec (`intramuros-app-spec.md`) are already in place — read that file first for context on pages, components, and prior decisions (gate selection, nav page filters, itinerary structure, etc.) before implementing anything here, since several items below extend those existing features.
 
 **Design constraint (same as base spec):** Reuse existing components, color tokens, spacing, and typography. No new design language. Match the existing design system for any new UI state.
 
@@ -9,23 +9,26 @@ This is a **standalone addendum** covering only the latest round of requested ch
 
 ## 1. Navigation View Options
 
-**Requirement:** When the user taps **"Navigate Now,"** prompt them to choose between two view modes before navigation starts:
+**Requirement:** Navigation supports two view modes:
 
-1. **Bird's-eye view** — an overview map showing the full route line from current position to destination, no step-by-step panel.
+1. **Bird's-eye view** — the current browse-mode map, with a route line drawn from the current/gate position to the destination. No turn-by-turn card needed — this is intentionally the simpler view.
 2. **Turn-by-turn view** — step-by-step directions with:
    - A live heading indicator (shows which direction the user is facing)
    - Distance to the next turn
    - Current street name
    - Styled to match Google Maps' walking-navigation experience
 
+### View-mode switching UI
+- **Confirmed:** this is not a one-time upfront choice (no bottom sheet or dialog shown once at the start). Instead, provide a **persistent, tappable toggle icon** positioned on the side of the navigation screen, which the user can tap **at any time during navigation** to switch between Bird's-eye and Turn-by-turn view. The icon should clearly indicate current mode and/or what tapping it switches to.
+
 ### Panel behavior (turn-by-turn view)
-- The live directions panel at the bottom must be **collapsible/draggable** — the user can swipe it down to reveal the full map underneath, and swipe back up to restore the panel.
+- The live directions panel at the bottom must be **collapsible/draggable**, matching standard `DraggableScrollableSheet`-style behavior (drag anywhere on the panel to resize/dismiss it, revealing the full map underneath) — this is the confirmed behavior, matching Google Maps' feel.
 
 ### Consistency requirement
-This exact flow — view-mode choice, then collapsible-panel turn-by-turn — must be **identical across all three entry points**:
-1. "Navigate Now" on the **Home page**
+This exact flow — persistent view-mode toggle + collapsible-panel turn-by-turn — must be **identical across all three entry points**:
+1. "Navigate Now" on the **Home page** — note: this button is already gated behind the user first picking a location on the Home page (i.e., there's no separate "no destination" case to design for — by the time Navigate Now is tappable/relevant, a location has already been selected, same as Location Details' Navigate button).
 2. "Navigate" on a **Location Details** page
-3. "Navigate" within an **Itinerary** (see Section 6 below — itinerary navigation additionally adds a transport-mode choice *before* this view-mode choice)
+3. "Navigate" within an **Itinerary** (see Section 6 below — itinerary navigation additionally adds a transport-mode choice *before* this flow)
 
 Do not build three separate implementations — this should be one shared navigation flow/component invoked from three places.
 
@@ -45,7 +48,7 @@ Do not build three separate implementations — this should be one shared naviga
 
 ### 2.3 Live tracking activation
 - **Live GPS tracking activates once the user is detected within ~50 meters of their selected starting gate** (confirmed threshold — typical GPS accuracy range). Before that point, the app should not reposition the user's marker based on real-time GPS.
-- Once the ~50m threshold is crossed, switch to real-time GPS tracking for the rest of the session within Intramuros (this is what powers live turn-by-turn in Section 1).
+- Once the ~50m threshold is crossed, switch to real-time GPS tracking for the rest of the session within Intramuros (this is what powers live turn-by-turn in Section 1). **Confirmed:** once live GPS activates, it stays active for the remainder of that navigation session even if the user later moves more than 50m away from the gate again — it does not revert back to the fixed gate-position mode.
 - If the user skipped gate selection entirely, fall back to standard real-time GPS behavior from app start (no fixed starting point to wait on).
 
 ---
@@ -103,8 +106,9 @@ Reference: uploaded screenshot "4.0 - ITINERARY PAGE GROUP SIZE" shows the inten
 - The "Live Updates" panel above (showing live status like "67m — open now," "Voiceover mode active," etc.) should also gain corresponding entries for the 3 new modes, following the same live-status pattern already used for the existing 3.
 
 ### 4.3 Transport & Access section
-- For each transport option listed (Tranvia Rental, Kalesa, Pedicab/E-Trike, Parking, etc.), tapping it should navigate to that service's **actual real-world location**, using accurate coordinates verified via web search (not estimated/approximated).
-- Add a **minimize/collapse control** for this panel so it can be shrunk when not needed.
+- For each transport option listed (Tranvia Rental, Kalesa, Pedicab/E-Trike, Parking, etc.), tapping it should navigate to that service's **actual real-world location**, using accurate coordinates verified via web search (not estimated/approximated) — **confirmed:** Kiro should web-search for verifiable public real-world locations (e.g., known kalesa stations, public parking lots near Intramuros) rather than needing specific vendor names supplied.
+- **Confirmed:** tapping an item opens the app's **own in-app navigation flow** (Section 1's shared Navigate component) toward that real-world location — not an external Maps app handoff. Even though these are third-party services outside the app's own location dataset, they should still route through the same in-app navigation experience as everything else.
+- Add a **minimize/collapse control** for this panel — **confirmed:** a simple chevron that collapses the whole section, matching the same pattern used for the accessibility panel.
 
 ---
 
@@ -124,8 +128,9 @@ Reference: uploaded screenshot "4.0 - ITINERARY PAGE GROUP SIZE" shows the inten
   - Kalesa
   - Pedicab / E-Trike
 - Visual style: a row of mode icons the user taps to select, similar to Google Maps' mode-selector pattern (car/transit/walk/bike icons).
-- The selected mode should affect route calculation/display where relevant (e.g., walking-only paths vs. routes usable by a kalesa or pedicab, if the app's routing data can support that distinction — flag to confirm if underlying routing data doesn't yet differentiate by mode).
-- After mode selection, proceed into the standard navigate flow (Section 1: view-mode choice → bird's-eye or turn-by-turn).
+- **Routing limitation — confirmed handling:** since routing is straight-line/walking-path based (no real road network for vehicles), Tranvia/Kalesa/Pedicab will reuse the **same route line/path logic as Walk** for now. This is not hidden from the user — show a **small UI note** near the route/panel explaining that the shown path is a walking path used for all modes (e.g., a small caption like "Route shown is a walking path"). Don't give each mode a distinct line color/style, since that would visually imply route differences that don't actually exist yet.
+- **Default state:** **confirmed** — the selector always **resets to Walk** by default each time it's opened, rather than remembering the last-used mode per itinerary.
+- After mode selection, proceed into the standard navigate flow (Section 1: persistent view-mode toggle, bird's-eye ↔ turn-by-turn).
 
 ---
 
@@ -142,7 +147,7 @@ Reference: uploaded screenshot "4.0 - ITINERARY PAGE GROUP SIZE" shows the inten
 - New user-submitted reviews append to that location's existing review list (which may already include seeded/generated reviews from the base spec) — don't replace or separate them into a different section.
 
 ### 7.3 Location photos in reviews
-- Each location's review section should display some **photo of the place**, sourced the same way as other location photos in this app (manually searched/curated static image, not a live API pull) — see Section 5's note on reusing one consistent image per location.
+- Each location's review section should display a **photo of the place**, sourced the same way as other location photos in this app (manually searched/curated static image, not a live API pull) — see Section 5's note on reusing one consistent image per location.
 
 ---
 

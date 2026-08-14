@@ -5,7 +5,25 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/itinerary_model.dart';
 import '../models/location_model.dart';
+import '../models/route_model.dart';
 import 'location_service.dart';
+
+/// A system-generated candidate itinerary for a curated route (addendum
+/// spec 3.4): a themed, roughly duration-matched sequence of qualifying
+/// sites the user can review and save. Not persisted on its own — saving
+/// converts it into a normal [ItineraryModel] via
+/// [ItineraryService.createItinerary].
+class PlanOption {
+  final String label;
+  final List<LocationModel> stops;
+  final double hours;
+
+  const PlanOption({
+    required this.label,
+    required this.stops,
+    required this.hours,
+  });
+}
 
 /// Persists user-created itineraries (spec Section 3.3-3.5): CRUD
 /// operations plus nearest-neighbor route sequencing from a given starting
@@ -135,6 +153,71 @@ class ItineraryService extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ─── Curated-route plan generation (addendum spec 3.4) ─────────────────────
+
+  /// Average minutes budgeted per stop when sizing how many stops a
+  /// generated plan option should have for a route's target duration.
+  static const int _avgMinutesPerSite = 45;
+
+  /// Sites that qualify for [route]'s theme: matching one of its
+  /// [CuratedRoute.qualifyingCategories], and — if set — no more expensive
+  /// than [CuratedRoute.maxPerPersonBudget] per person.
+  List<LocationModel> qualifyingSitesForRoute(CuratedRoute route) {
+    if (route.qualifyingCategories.isEmpty) return const [];
+    final allSites = LocationService().getAllLocations();
+    return allSites.where((site) {
+      final matchesCategory = route.qualifyingCategories.contains(
+        site.category,
+      );
+      final withinCap =
+          route.maxPerPersonBudget == null ||
+          site.budgetRange.max <= route.maxPerPersonBudget!;
+      return matchesCategory && withinCap;
+    }).toList();
+  }
+
+  /// Generates a set of distinct, roughly duration-matched [PlanOption]s
+  /// for [route], built from its qualifying sites. The number of options
+  /// scales with how many qualifying sites exist — no fixed count is
+  /// forced, per the addendum's explicit guidance (spec 3.4).
+  List<PlanOption> buildPlanOptions(CuratedRoute route) {
+    final sites = qualifyingSitesForRoute(route);
+    if (sites.length < 2) return const [];
+
+    final targetCount = ((route.hours * 60) / _avgMinutesPerSite).round().clamp(
+      2,
+      sites.length,
+    );
+    final stopsPerOption = targetCount.clamp(2, sites.length);
+    final optionCount = (sites.length / stopsPerOption).ceil().clamp(1, 4);
+
+    final options = <PlanOption>[];
+    for (var optionIndex = 0; optionIndex < optionCount; optionIndex++) {
+      final stops = <LocationModel>[];
+      for (var stopIndex = 0; stopIndex < stopsPerOption; stopIndex++) {
+        final site =
+            sites[(optionIndex * stopsPerOption + stopIndex) % sites.length];
+        if (!stops.any((s) => s.id == site.id)) stops.add(site);
+      }
+      if (stops.length < 2) continue;
+      options.add(
+        PlanOption(
+          label: 'Option ${optionIndex + 1}',
+          stops: stops,
+          hours: route.hours,
+        ),
+      );
+    }
+
+    if (options.isEmpty) {
+      final fallbackStops = sites.take(4).toList();
+      return [
+        PlanOption(label: 'Option 1', stops: fallbackStops, hours: route.hours),
+      ];
+    }
+    return options;
+  }
+
   // ─── Nearest-neighbor route sequencing (spec 3.4) ──────────────────────────
 
   /// Attempts to read the device's current GPS position. Returns `null` if
@@ -193,6 +276,9 @@ class ItineraryService extends ChangeNotifier {
     while (remaining.isNotEmpty) {
       var nearestIndex = 0;
       var nearestDistance = double.infinity;
+      // Strict `<` (not `<=`) is intentional: on a tie, the first-encountered
+      // stop in `remaining`'s current order wins, so ties resolve stably by
+      // list order instead of flip-flopping between runs.
       for (var i = 0; i < remaining.length; i++) {
         final distance = Geolocator.distanceBetween(
           currentPoint.latitude,

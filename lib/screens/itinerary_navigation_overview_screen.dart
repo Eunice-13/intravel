@@ -3,7 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../models/location_model.dart';
 import '../theme/app_theme.dart';
-import 'navigation_screen.dart';
+import '../widgets/nav_flow_launcher.dart';
 
 /// Shows every stop in the currently selected itinerary order on one map.
 ///
@@ -29,6 +29,7 @@ class _ItineraryNavigationOverviewScreenState
     extends State<ItineraryNavigationOverviewScreen> {
   GoogleMapController? _mapController;
   int? _selectedLegIndex;
+  MapType _mapType = MapType.normal;
 
   Set<Marker> _buildMarkers() {
     return {
@@ -113,11 +114,13 @@ class _ItineraryNavigationOverviewScreenState
 
   void _openLiveGuidance(int targetIndex) {
     if (targetIndex < 0 || targetIndex >= widget.stops.length) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) =>
-            NavigationScreen(targetLocation: widget.stops[targetIndex]),
-      ),
+    // Per-leg transport choice (addendum spec Section 6, user-confirmed
+    // decision): each leg independently runs the transport-mode picker
+    // then the shared view-mode picker, rather than choosing one
+    // transport mode for the whole itinerary session.
+    NavFlowLauncher.startFromItinerary(
+      context,
+      location: widget.stops[targetIndex],
     );
   }
 
@@ -198,6 +201,7 @@ class _ItineraryNavigationOverviewScreenState
               child: Stack(
                 children: [
                   GoogleMap(
+                    mapType: _mapType,
                     initialCameraPosition: CameraPosition(
                       target: widget.stops.first.coordinates,
                       zoom: 15,
@@ -227,6 +231,18 @@ class _ItineraryNavigationOverviewScreenState
                       onNavigate: () => _openLiveGuidance(
                         _selectedLegIndex == null ? 0 : _selectedLegIndex! + 1,
                       ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 14,
+                    right: 20,
+                    child: _MapLayerToggleButton(
+                      isSatelliteView: _mapType == MapType.satellite,
+                      onToggle: () => setState(() {
+                        _mapType = _mapType == MapType.satellite
+                            ? MapType.normal
+                            : MapType.satellite;
+                      }),
                     ),
                   ),
                 ],
@@ -480,6 +496,64 @@ class _ItineraryStopCard extends StatelessWidget {
                   color: Colors.white,
                   size: 17,
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Map Layer Toggle Button ────────────────────────────────────────────────
+// Standard/satellite view switch, wired to GoogleMap's native `mapType`
+// property. Visually matches the app's existing black accessibility-mode
+// pill style (see `_AccessibilityModeButton` in navigation_screen.dart),
+// sized down for a floating map control.
+
+class _MapLayerToggleButton extends StatelessWidget {
+  final bool isSatelliteView;
+  final VoidCallback onToggle;
+
+  const _MapLayerToggleButton({
+    required this.isSatelliteView,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF050505),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSatelliteView
+                  ? Icons.map_outlined
+                  : Icons.satellite_alt_outlined,
+              color: Colors.white,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              isSatelliteView ? 'Standard' : 'Satellite',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
           ],

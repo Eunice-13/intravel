@@ -8,8 +8,19 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
-        <!-- Google Maps API Key -->
-        <meta-data 
+        <!--
+          Google Maps SDK for Android API key (used by google_maps_flutter
+          throughout the app's map screens). Injected at build time from
+          android/local.properties' MAPS_API_KEY entry via the
+          manifestPlaceholders wiring in android/app/build.gradle.kts —
+          never hardcode a real key here directly. local.properties is
+          gitignored, so each teammate sets their own key locally
+          (MAPS_API_KEY=your_key_here) without it ever being committed.
+          If the key is missing/invalid, the app detects the resulting
+          map-load failure and shows a graceful "Map unavailable" fallback
+          instead of crashing (see lib/screens/osm_poi_map_screen.dart).
+        -->
+        <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${mapsApiKey}" />
 
