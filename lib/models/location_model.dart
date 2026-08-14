@@ -38,6 +38,15 @@ class LocationModel {
   /// IDs of other [LocationModel]s to surface under "Related landmarks".
   final List<String> relatedPlaceIds;
 
+  /// Whether this location (Cafe category) offers WiFi (addendum spec 3
+  /// Section 2.2). Always `false` for non-cafe categories.
+  final bool hasWifi;
+
+  /// Whether this location (Cafe category) offers power sockets/outlets
+  /// for laptops and devices (addendum spec 3 Section 2.2). Always `false`
+  /// for non-cafe categories.
+  final bool hasSockets;
+
   /// Realistic per-person spending range for this site (addendum spec
   /// Section 3.5): ticketed sites carry their entrance-fee range, while
   /// free sites (plazas, open landmarks, etc.) still carry a small
@@ -73,6 +82,8 @@ class LocationModel {
     this.visitNote = '',
     this.relatedPlaceIds = const [],
     this.budgetRange = const BudgetRange(min: 0, max: 0),
+    this.hasWifi = false,
+    this.hasSockets = false,
   });
 
   bool get isOpenNow {
@@ -304,6 +315,10 @@ enum AccessibilityType {
   /// Turn-by-turn directions narrated with extra descriptive detail for
   /// low-vision users (addendum spec Section 4.2, new mode #6 of 6).
   audioDescribedDirections,
+
+  /// Cafe filter highlighting nearby cafes with workspace amenities —
+  /// WiFi and power sockets (addendum spec 3 Section 1.1).
+  cafe,
 }
 
 class NearbyAmenity {
