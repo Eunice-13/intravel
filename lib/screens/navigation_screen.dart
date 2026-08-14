@@ -2461,14 +2461,16 @@ class _NavFilterChipRow extends StatelessWidget {
       height: 34,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        // +1 for the trailing "Itineraries" entry point, kept in the same
+        // +1 for the leading "Itineraries" entry point, kept in the same
         // scrollable row as the category filter chips per design so it
         // reads as sitting alongside Fortifications/Landmarks/Schools/
-        // Parks rather than as a separate control below them.
+        // Parks rather than as a separate control below them. Placed
+        // first in the row (per updated order: Itineraries, then
+        // Fortifications/Landmarks/Schools/Parks).
         itemCount: categories.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          if (index == categories.length) {
+          if (index == 0) {
             return GestureDetector(
               onTap: onOpenItineraries,
               child: Container(
@@ -2478,25 +2480,18 @@ class _NavFilterChipRow extends StatelessWidget {
                   color: colors.forest,
                   borderRadius: BorderRadius.circular(25),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.explore_outlined, size: 14, color: Colors.white),
-                    SizedBox(width: 5),
-                    Text(
-                      'Itineraries',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+                child: const Text(
+                  'Itineraries',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             );
           }
-          final category = categories[index];
+          final category = categories[index - 1];
           final isActive = activeCategories.contains(category);
           return GestureDetector(
             onTap: () => onToggle(category),
