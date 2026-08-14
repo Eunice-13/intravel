@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import '../main.dart' show chatbotNavigatorKey;
+import '../services/chatbot_page_context_service.dart';
 import '../services/chatbot_visibility_service.dart';
 import '../theme/app_theme.dart';
 import 'chatbot_chat_sheet.dart';
-import 'chatbot_tour_guide_logo.dart';
+import 'chatbot_avatar.dart';
 
 /// The IntraBadi assistant's entry point (chatbot spec Section 1): "a
 /// toggleable side icon, visible on every page of the app — not a fixed
@@ -43,7 +44,14 @@ class _ChatbotSideHandleState extends State<ChatbotSideHandle> {
     // `showChatbotChatSheet`) can find it via `Navigator.of(context)`.
     final navigatorContext = chatbotNavigatorKey.currentState?.context;
     if (navigatorContext == null) return;
-    showChatbotChatSheet(navigatorContext);
+    showChatbotChatSheet(
+      navigatorContext,
+      // Forwards whichever location the user is currently viewing (see
+      // [ChatbotPageContextService]) so vague follow-ups like "tell me
+      // more about this place" resolve. This was previously never
+      // supplied, leaving the engine's page-awareness path inert.
+      currentPageContext: ChatbotPageContextService.instance.currentLocationId,
+    );
   }
 
   void _hideHandleEntirely() {
@@ -188,23 +196,29 @@ class _ExpandedHandle extends StatelessWidget {
               ),
             ),
           ),
-          Material(
-            color: Colors.transparent,
-            elevation: 4,
-            shape: const CircleBorder(),
-            shadowColor: Colors.black.withValues(alpha: 0.25),
-            child: InkWell(
-              onTap: onOpenChat,
-              customBorder: const CircleBorder(),
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: colors.forest,
-                  shape: BoxShape.circle,
+          // Character only — the forest-green circle and its drop shadow
+          // are gone, per the confirmed "transparent background, character
+          // only" requirement, so the eagle floats directly on the page.
+          //
+          // Locked to `idle` on purpose: this handle is persistently
+          // on-screen on every page, so the expressive states would be a
+          // constant distraction and a continuous frame/battery cost for no
+          // benefit. Expressive states live in the chat sheet, where the
+          // user is actually engaged.
+          GestureDetector(
+            onTap: onOpenChat,
+            behavior: HitTestBehavior.opaque,
+            child: const SizedBox(
+              width: 56,
+              height: 56,
+              child: Center(
+                child: ChatbotAvatar(
+                  state: ChatbotAvatarState.idle,
+                  size: 52,
+                  // Static: creates no tickers, so the always-on-screen
+                  // handle costs nothing per frame.
+                  animate: false,
                 ),
-                alignment: Alignment.center,
-                child: const ChatbotTourGuideLogo(size: 30),
               ),
             ),
           ),

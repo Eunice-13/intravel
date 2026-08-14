@@ -34,6 +34,16 @@ class LiveTrackingActivationService extends ChangeNotifier {
   bool get isActive =>
       _activated || GateSelectionService.instance.selectedGateId == null;
 
+  /// Clears session activation. Exists because this is a process-wide
+  /// singleton with deliberately no production reset (activation is meant
+  /// to be sticky for the whole session), which would otherwise make tests
+  /// order-dependent — one case activating tracking would silently satisfy
+  /// the next.
+  @visibleForTesting
+  void resetForTesting() {
+    _activated = false;
+  }
+
   /// Call on every fresh GPS reading. No-ops once already activated, or if
   /// there's no selected gate to check proximity against (in which case
   /// [isActive] is already true unconditionally).

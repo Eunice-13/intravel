@@ -49,9 +49,15 @@ flutter:
     - assets/intravel/assets/home/
     - assets/intravel/vendor/leaflet/
     - assets/intravel/vendor/leaflet/images/
-    # Bundled as a fallback so ORS_API_KEY loads automatically no matter
-    # how the app is launched (IDE Run button, hot restart, a plain
-    # `flutter run` with no flags) — see lib/services/routing_service.dart.
+    # Bundled as a fallback so ORS_API_KEY and GEMINI_API_KEY load
+    # automatically no matter how the app is launched (IDE Run button, hot
+    # restart, a plain `flutter run` with no flags) — see
+    # lib/services/routing_service.dart and
+    # lib/services/gemini_api_key_loader.dart, which both read this asset
+    # when no --dart-define was supplied.
+    #
     # env.json itself stays gitignored; only this path declaration is
-    # committed.
+    # committed. Copy env.example.json to env.json and fill in your keys.
+    # Without this line the asset fallback silently fails and both
+    # routing and the assistant degrade to their offline behavior.
     - env.json

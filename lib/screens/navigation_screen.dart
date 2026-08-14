@@ -123,6 +123,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// update would never register as "off route").
   LatLng? _routeStartPosition;
 
+  /// Which gate [_routeStartPosition] was anchored to, so a later gate
+  /// change can be detected and the route re-anchored. `null` when the
+  /// start came from live GPS rather than a gate.
+  String? _routeStartGateId;
+
   /// Cached waypoints of the current route line (either the walking-path
   /// graph's hop chain, or a direct two-point line as a fallback),
   /// recomputed whenever [_buildRouteLine] runs. Used as a last-resort
@@ -264,6 +269,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _navTarget = widget.navTarget;
     _routingService = widget.routingService ?? OpenRouteServiceRouting();
     LiveTrackingActivationService.instance.addListener(_onActivationChanged);
+    GateSelectionService.instance.addListener(_onGateChanged);
     _initializeLocation();
     _listenToCompass();
     _rebuildLiveUpdates();
@@ -486,8 +492,82 @@ class _NavigationScreenState extends State<NavigationScreen> {
   void _setRouteStartIfNeeded() {
     if (_navTarget != null && _routeStartPosition == null) {
       final point = _effectiveUserLatLng;
-      if (point != null) _routeStartPosition = point;
+      if (point != null) {
+        _routeStartPosition = point;
+        // Record which gate this anchor came from (null once live GPS is
+        // driving position) so [_onGateChanged] can tell a real gate
+        // switch apart from an unrelated notification.
+        _routeStartGateId = LiveTrackingActivationService.instance.isActive
+            ? null
+            : GateSelectionService.instance.selectedGateId;
+      }
     }
+  }
+
+  /// Re-anchors this screen when the user picks a different starting gate,
+  /// so the change propagates to the user marker, the route line, the
+  /// camera, and every distance/ETA derived from them.
+  ///
+  /// Critically, the gate only defines where the user *starts*. Once live
+  /// GPS has activated — meaning they're actually here and moving — their
+  /// real position is the source of truth, and a gate change must not drag
+  /// the route start backwards to a gate they've already left. So the
+  /// re-anchor only happens while live tracking is still inactive; after
+  /// that this just rebuilds so any gate-derived labels stay accurate.
+  void _onGateChanged() {
+    if (!mounted) return;
+
+    if (LiveTrackingActivationService.instance.isActive) {
+      setState(() {});
+      return;
+    }
+
+    final gateId = GateSelectionService.instance.selectedGateId;
+    if (gateId == _routeStartGateId) {
+      setState(() {});
+      return;
+    }
+
+    setState(() {
+      _routeStartGateId = gateId;
+      // Drop the old anchor and everything derived from it, so nothing
+      // keeps rendering against the previous gate.
+      _routeStartPosition = null;
+      _cachedRouteLine = null;
+      _cachedRouteLineStart = null;
+      _realRouteWaypoints = null;
+      _realRouteFetchedForStart = null;
+      _realRouteSteps = const [];
+      _routeWaypoints = null;
+      _currentStepIndex = 0;
+      _nextWaypointIndex = 1;
+      _isOffRoute = false;
+      _realRouteFailureReason = null;
+      // Allow bird's-eye to re-fit its bounds to the new start/destination
+      // pair instead of staying framed on the old gate.
+      _hasFitBirdsEyeBounds = false;
+    });
+
+    _setRouteStartIfNeeded();
+    _moveCameraForGateChange();
+  }
+
+  /// Points the camera at the newly picked gate.
+  ///
+  /// Browse mode has no follow camera and its `initialCameraPosition`
+  /// doesn't re-apply on rebuild, so without this the user marker would
+  /// move to the new gate while the viewport stayed framed on the old one.
+  /// [_applyModeSpecificCamera] deliberately no-ops in browse mode (it runs
+  /// on every GPS update and must not fight the user's panning), but an
+  /// explicit gate pick is a direct request to look somewhere.
+  void _moveCameraForGateChange() {
+    if (!_isBrowseMode) {
+      _applyModeSpecificCamera();
+      return;
+    }
+    final point = _effectiveUserLatLng;
+    if (point == null) return;
+    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(point, 16));
   }
 
   @override
@@ -496,6 +576,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _compassSubscription?.cancel();
     _headingNotifier.dispose();
     LiveTrackingActivationService.instance.removeListener(_onActivationChanged);
+    GateSelectionService.instance.removeListener(_onGateChanged);
     _mapController?.dispose();
     _searchController.dispose();
     super.dispose();
@@ -904,16 +985,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   children: [
                     _AmenityChip(
                       icon: location.hasWifi ? Icons.wifi : Icons.wifi_off,
-                      label: location.hasWifi
-                          ? 'WiFi available'
-                          : 'No WiFi',
+                      label: location.hasWifi ? 'WiFi available' : 'No WiFi',
                       available: location.hasWifi,
                     ),
                     const SizedBox(width: 8),
                     _AmenityChip(
-                      icon: location.hasSockets
-                          ? Icons.power
-                          : Icons.power_off,
+                      icon: location.hasSockets ? Icons.power : Icons.power_off,
                       label: location.hasSockets
                           ? 'Sockets available'
                           : 'No sockets',
@@ -1479,7 +1556,16 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   zoom: 16,
                 ),
                 markers: _buildMarkers(),
-                myLocationEnabled: true,
+                // Suppressed until live tracking activates: before that the
+                // app deliberately treats the selected gate as the user's
+                // position, and the platform's own blue dot would sit at
+                // their real GPS location instead — showing two
+                // contradicting "you are here" indicators at once (e.g. the
+                // gate pin in Intramuros plus a blue dot across Metro
+                // Manila). Once live GPS takes over, both agree, so the
+                // native dot is turned back on.
+                myLocationEnabled:
+                    LiveTrackingActivationService.instance.isActive,
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
@@ -1570,7 +1656,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 ),
                 markers: _buildMarkers(),
                 polylines: _buildRouteLine(),
-                myLocationEnabled: true,
+                // See the browse-mode map above: hidden pre-activation so
+                // the native dot can't contradict the gate-anchored marker.
+                myLocationEnabled:
+                    LiveTrackingActivationService.instance.isActive,
                 myLocationButtonEnabled: false,
                 zoomControlsEnabled: false,
                 mapToolbarEnabled: false,
@@ -1579,16 +1668,34 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   _applyModeSpecificCamera();
                 },
               ),
+              // Bottom-anchored floating stack: the satellite toggle sits
+              // directly above the compact trip-info card. Both live
+              // inside the map area, so when the Live Updates panel below
+              // expands or collapses, the map area resizes and this whole
+              // block rides up/down with it — animated for free by that
+              // panel's existing AnimatedSize, no separate animation
+              // needed. The bottom inset is the deliberate gap that keeps
+              // the card reading as its own floating element rather than
+              // looking fused to the panel, and it's what leaves the card
+              // still visible once the panel is collapsed.
               Positioned(
-                bottom: 14,
+                left: 20,
                 right: 20,
-                child: _MapLayerToggleButton(
-                  isSatelliteView: _mapType == MapType.satellite,
-                  onToggle: () => setState(() {
-                    _mapType = _mapType == MapType.satellite
-                        ? MapType.normal
-                        : MapType.satellite;
-                  }),
+                bottom: 14,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _MapLayerToggleButton(
+                      isSatelliteView: _mapType == MapType.satellite,
+                      onToggle: () => setState(() {
+                        _mapType = _mapType == MapType.satellite
+                            ? MapType.normal
+                            : MapType.satellite;
+                      }),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildFloatingTripInfoCard(colors),
+                  ],
                 ),
               ),
               // Back button (addendum spec 2.1) — this screen has no
@@ -1670,17 +1777,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   right: 68,
                   child: _buildTopManeuverCard(colors),
                 ),
-              // Turn-by-turn draggable directions panel (addendum spec
-              // Section 1) — deliberately absent in bird's-eye mode,
-              // which is meant to stay a clean overview map with just the
-              // route line (per user-confirmed decision: view mode
-              // controls this panel; the separate Accessibility/Live
-              // Updates panel below is orthogonal and shown/hidden purely
-              // by its own Settings toggle regardless of view mode). Now
-              // holds only the ETA/distance summary and target name — the
-              // maneuver card itself lives at the top of the screen
-              // instead (see above).
-              if (_isTurnByTurn) _buildTurnByTurnPanel(colors),
             ],
           ),
         ),
@@ -1846,150 +1942,120 @@ class _NavigationScreenState extends State<NavigationScreen> {
     );
   }
 
-  /// Collapsible/draggable live directions panel for turn-by-turn view
-  /// (addendum spec Section 1): swipe down to shrink it and reveal more
-  /// of the map, swipe back up to restore it — styled with this app's
-  /// existing card/shadow language rather than a new component. Carries
-  /// the ETA/distance summary and target name; the turn maneuver
-  /// icon/distance/street name live in the separate top-of-screen
-  /// maneuver card instead (see [_buildTopManeuverCard]).
-  Widget _buildTurnByTurnPanel(AppColors colors) {
-    return Positioned.fill(
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.3,
-        minChildSize: 0.09,
-        maxChildSize: 0.42,
-        snap: true,
-        snapSizes: const [0.09, 0.3, 0.42],
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: colors.paper,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 14,
-                  offset: const Offset(0, -3),
+  /// Compact floating trip-info card: destination name, distance, and ETA.
+  ///
+  /// Replaces the earlier `DraggableScrollableSheet` version, which claimed
+  /// 30-42% of the viewport to show ~70px of content and so left a large
+  /// blank area. This is a fixed-height card instead, anchored just above
+  /// the Live Updates panel with a gap between them, so the two read as
+  /// separate floating elements and the card stays visible when the panel
+  /// is collapsed.
+  ///
+  /// Shown in both bird's-eye and turn-by-turn view (improvement-batch
+  /// spec Section 8) — previously the name/ETA/distance appeared only in
+  /// turn-by-turn, leaving bird's-eye with no trip summary at all.
+  ///
+  /// The turn maneuver icon, next-turn distance, and current street name
+  /// remain in the separate top-of-screen maneuver card
+  /// ([_buildTopManeuverCard]); this card is only the trip summary.
+  Widget _buildFloatingTripInfoCard(AppColors colors) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: widget.transportMode.routeColor.withValues(
+                    alpha: 0.16,
+                  ),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-              ],
-            ),
-            child: ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(
-                      color: colors.muted.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
+                child: Text(
+                  '${widget.transportMode.emoji} ${widget.transportMode.label}',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: widget.transportMode.routeColor,
                   ),
                 ),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: widget.transportMode.routeColor.withValues(
-                          alpha: 0.16,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+              ),
+              const Spacer(),
+              Text(
+                '${_calculateDistance()} · ETA ${_calculateEta()}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: colors.muted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _navTarget?.name ?? '',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: colors.ink,
+              height: 1.2,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          // Off-route nudge folded into this card as a third line rather
+          // than living in its own banner, keeping it visible without
+          // adding more floating chrome over the map.
+          if (_isOffRoute) ...[
+            const SizedBox(height: 9),
+            GestureDetector(
+              onTap: _recenterOnRoute,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.forest,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.sync_rounded, size: 13, color: Colors.white),
+                    SizedBox(width: 6),
+                    Expanded(
                       child: Text(
-                        '${widget.transportMode.emoji} ${widget.transportMode.label}',
+                        'Off route — tap to recenter',
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: widget.transportMode.routeColor,
+                          fontSize: 10.5,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _calculateDistance(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: colors.muted,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'ETA ${_calculateEta()}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: colors.muted,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  _navTarget?.name ?? '',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: colors.ink,
-                  ),
-                ),
-                // The turn maneuver icon, next-turn distance, and current
-                // street/waypoint name have moved to the top-of-screen
-                // maneuver card (see [_buildTopManeuverCard]) — this sheet
-                // now only carries the ETA/distance summary and target
-                // name above, plus the off-route nudge below, matching
-                // the reference's split between a top maneuver card and
-                // a bottom ETA summary sheet.
-                if (_isOffRoute) ...[
-                  const SizedBox(height: 14),
-                  GestureDetector(
-                    onTap: _recenterOnRoute,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.forest,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.sync_rounded,
-                            size: 14,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 6),
-                          const Expanded(
-                            child: Text(
-                              'You\'ve strayed from the route — tap to recenter',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
-          );
-        },
+          ],
+        ],
       ),
     );
   }

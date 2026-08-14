@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../theme/theme_controller.dart';
-import '../models/nav_target.dart';
-import '../models/route_model.dart';
 import '../services/gate_selection_service.dart';
 import '../services/gate_service.dart';
 import '../services/accessibility_settings_service.dart';
-import '../services/route_service.dart';
 import '../services/weather_service.dart';
 import '../models/weather_model.dart';
-import '../widgets/nav_flow_launcher.dart';
 import 'favorites_screen.dart';
 import 'gate_selection_screen.dart';
 import 'reviewable_locations_screen.dart';
 
 /// Settings screen, ported from the Eunice-branch `#screen-profile` markup:
 /// guest sign-in card, weather card, Dark Mode toggle (wired to the app-wide
-/// [ThemeController] so it actually re-themes every screen), Map style
-/// toggle, and navigation rows into Saved Places / Accessibility Support.
+/// [ThemeController] so it actually re-themes every screen), and navigation
+/// rows into Saved Places / Accessibility Support.
+///
+/// Two controls that used to live here have moved out: the Map
+/// Standard/Satellite toggle (satellite view is switched directly on the
+/// map screens) and Transport & Access (now a Home page section — see
+/// `lib/widgets/transport_access_section.dart`).
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -26,13 +27,6 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _mapStyle = 'Standard';
-
-  /// Whether the Transport & Access section is expanded (addendum spec
-  /// Section 4.3's "minimize/collapse control"). Starts expanded, same
-  /// default as the Navigate flow's Live Updates panel.
-  bool _isTransportSectionExpanded = true;
-
   // Intramuros, Manila — same default center used by the app's map screens.
   static const double _weatherLat = 14.5906;
   static const double _weatherLon = 120.9750;
@@ -259,44 +253,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onTap: () => ThemeController.instance.toggleDarkMode(),
                   ),
 
-                  const SizedBox(height: 17),
-                  Text(
-                    'MAP',
-                    style: TextStyle(color: colors.muted, fontSize: 11),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    constraints: const BoxConstraints(minHeight: 67),
-                    decoration: BoxDecoration(
-                      color: colors.card,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: colors.muted.withValues(alpha: 0.4),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _MapToggleButton(
-                            colors: colors,
-                            label: 'Standard',
-                            isActive: _mapStyle == 'Standard',
-                            onTap: () => setState(() => _mapStyle = 'Standard'),
-                          ),
-                        ),
-                        Expanded(
-                          child: _MapToggleButton(
-                            colors: colors,
-                            label: 'Satellite',
-                            isActive: _mapStyle == 'Satellite',
-                            onTap: () =>
-                                setState(() => _mapStyle = 'Satellite'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 15),
 
                   _SettingRow(
@@ -399,174 +355,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 17),
-                  _buildTransportAccessSection(colors),
+                  // (Transport & Access moved to the Home page — see
+                  // `lib/widgets/transport_access_section.dart`.)
                 ],
               ),
             ),
           ),
         );
       },
-    );
-  }
-
-  // ─── Transport & Access (addendum spec Section 4.3) ────────────────────
-
-  Widget _buildTransportAccessSection(AppColors colors) {
-    final options = RouteService().getTransportOptions();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () => setState(
-            () => _isTransportSectionExpanded = !_isTransportSectionExpanded,
-          ),
-          behavior: HitTestBehavior.opaque,
-          child: Row(
-            children: [
-              Text(
-                'TRANSPORT & ACCESS',
-                style: TextStyle(color: colors.muted, fontSize: 11),
-              ),
-              const Spacer(),
-              Icon(
-                _isTransportSectionExpanded
-                    ? Icons.keyboard_arrow_up_rounded
-                    : Icons.keyboard_arrow_down_rounded,
-                color: colors.muted,
-                size: 20,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeInOut,
-          alignment: Alignment.topCenter,
-          child: _isTransportSectionExpanded
-              ? Column(
-                  children: options
-                      .map(
-                        (option) => Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: _TransportOptionCard(
-                            colors: colors,
-                            option: option,
-                            onTap: option.coordinates == null
-                                ? null
-                                : () => NavFlowLauncher.startWithTarget(
-                                    context,
-                                    target: NavTarget(
-                                      name: option.name,
-                                      coordinates: option.coordinates!,
-                                    ),
-                                  ),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                )
-              : const SizedBox.shrink(),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── Transport Option Card ───────────────────────────────────────────────────
-// Addendum spec Section 4.3: tapping a transport option navigates to its
-// real-world location (verified via web search — see RouteService), using
-// the shared Navigate flow like every other destination in the app.
-// [onTap] is null for options with no single fixed real-world point,
-// which disables the row's navigate affordance while still showing
-// pricing/notes.
-
-class _TransportOptionCard extends StatelessWidget {
-  final AppColors colors;
-  final TransportOption option;
-  final VoidCallback? onTap;
-
-  const _TransportOptionCard({
-    required this.colors,
-    required this.option,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: colors.card,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: colors.muted.withValues(alpha: 0.4)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: colors.forest.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: Text(option.emoji, style: const TextStyle(fontSize: 20)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    option.name,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: colors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    option.pricing,
-                    style: TextStyle(fontSize: 11, color: colors.muted),
-                  ),
-                  if (option.locationLabel.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.place_outlined,
-                          size: 12,
-                          color: colors.accent,
-                        ),
-                        const SizedBox(width: 3),
-                        Expanded(
-                          child: Text(
-                            option.locationLabel,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: colors.accent,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (onTap != null)
-              Icon(Icons.navigation_outlined, color: colors.forest, size: 20),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -649,40 +445,8 @@ class _SwitchPill extends StatelessWidget {
   }
 }
 
-// ─── Map Toggle Button ───────────────────────────────────────────────────────────
-
-class _MapToggleButton extends StatelessWidget {
-  final AppColors colors;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _MapToggleButton({
-    required this.colors,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 46,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isActive ? colors.forest : Colors.transparent,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? Colors.white : colors.ink,
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-}
+// (The Settings "MAP" Standard/Satellite toggle was removed — satellite
+// view is toggled directly on the map screens via their own
+// `_MapLayerToggleButton`, which owns the real `MapType` state. The
+// Settings copy was never wired to those screens, so removing it changes
+// no behavior.)

@@ -47,90 +47,85 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: ChatbotChatSheet(geminiService: geminiService),
-        ),
+        home: Scaffold(body: ChatbotChatSheet(geminiService: geminiService)),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
-  testWidgets(
-    'shows a loading indicator while awaiting the Gemini reply, then '
-    'shows the reply as a new bubble',
-    (tester) async {
-      final fake = _FakeGeminiChatService();
-      await pumpSheet(tester, fake);
+  testWidgets('shows a loading indicator while awaiting the Gemini reply, then '
+      'shows the reply as a new bubble', (tester) async {
+    final fake = _FakeGeminiChatService();
+    await pumpSheet(tester, fake);
 
-      await tester.enterText(find.byType(TextField), 'is intramuros walkable');
-      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-      await tester.pump(); // user message appended
-      await tester.pump(); // engine processed, Gemini call started
+    await tester.enterText(find.byType(TextField), 'is intramuros walkable');
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pump(); // user message appended
+    await tester.pump(); // engine processed, Gemini call started
 
-      // Loading indicator (three animated dots) should be visible while
-      // the fake service's Future is still unresolved.
-      expect(find.byType(AnimatedBuilder), findsWidgets);
-      expect(fake.callCount, 1);
+    // Loading indicator (three animated dots) should be visible while
+    // the fake service's Future is still unresolved.
+    expect(find.byType(AnimatedBuilder), findsWidgets);
+    expect(fake.callCount, 1);
 
-      fake.resolveWith('Yes, Intramuros is very walkable!');
-      await tester.pumpAndSettle();
+    fake.resolveWith('Yes, Intramuros is very walkable!');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('Yes, Intramuros is very walkable!'), findsOneWidget);
-    },
-  );
+    expect(find.text('Yes, Intramuros is very walkable!'), findsOneWidget);
+  });
 
-  testWidgets(
-    'falls back to the engine\'s offline answer if Gemini throws',
-    (tester) async {
-      final fake = _FakeGeminiChatService()..shouldThrow = true;
-      await pumpSheet(tester, fake);
+  testWidgets('falls back to the engine\'s offline answer if Gemini throws', (
+    tester,
+  ) async {
+    final fake = _FakeGeminiChatService()..shouldThrow = true;
+    await pumpSheet(tester, fake);
 
-      await tester.enterText(find.byType(TextField), 'is intramuros walkable');
-      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-      await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'is intramuros walkable');
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-      expect(fake.callCount, 1);
-      // The engine's own general-topic fallback text should be shown
-      // instead of leaving the chat stuck on the loading indicator.
-      expect(find.textContaining('walkable'), findsWidgets);
-    },
-  );
+    expect(fake.callCount, 1);
+    // The engine's own general-topic fallback text should be shown
+    // instead of leaving the chat stuck on the loading indicator.
+    expect(find.textContaining('walkable'), findsWidgets);
+  });
 
-  testWidgets(
-    'never calls Gemini for an out-of-scope (declined) message',
-    (tester) async {
-      final fake = _FakeGeminiChatService();
-      await pumpSheet(tester, fake);
+  testWidgets('never calls Gemini for an out-of-scope (declined) message', (
+    tester,
+  ) async {
+    final fake = _FakeGeminiChatService();
+    await pumpSheet(tester, fake);
 
-      await tester.enterText(
-        find.byType(TextField),
-        'how do i get to intramuros from the airport',
-      );
-      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-      await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField),
+      'how do i get to intramuros from the airport',
+    );
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-      expect(fake.callCount, 0);
-      expect(find.textContaining('Intramuros and this app'), findsOneWidget);
-    },
-  );
+    expect(fake.callCount, 0);
+    expect(find.textContaining('Intramuros and this app'), findsOneWidget);
+  });
 
-  testWidgets(
-    'never calls Gemini for a recognized action request awaiting '
-    'confirmation',
-    (tester) async {
-      final fake = _FakeGeminiChatService();
-      await pumpSheet(tester, fake);
+  testWidgets('never calls Gemini for a recognized action request awaiting '
+      'confirmation', (tester) async {
+    final fake = _FakeGeminiChatService();
+    await pumpSheet(tester, fake);
 
-      await tester.enterText(
-        find.byType(TextField),
-        'add fort santiago to my itinerary',
-      );
-      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-      await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField),
+      'add fort santiago to my itinerary',
+    );
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-      expect(fake.callCount, 0);
-      expect(find.text('Yes'), findsOneWidget);
-      expect(find.text('No'), findsOneWidget);
-    },
-  );
+    expect(fake.callCount, 0);
+    expect(find.text('Yes'), findsOneWidget);
+    expect(find.text('No'), findsOneWidget);
+  });
 }

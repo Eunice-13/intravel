@@ -7,6 +7,7 @@ import '../models/itinerary_model.dart';
 import '../models/route_model.dart';
 import '../models/location_model.dart';
 import '../widgets/budget_filter_sheet.dart';
+import '../widgets/receipt_dividers.dart';
 import 'location_details_screen.dart';
 import 'itinerary_create_screen.dart';
 import 'route_plan_options_screen.dart';
@@ -177,10 +178,9 @@ class _PlansScreenState extends State<PlansScreen> {
                     itemCount: itineraries.length,
                     itemBuilder: (context, index) {
                       final itinerary = itineraries[index];
-                      final stopCount =
-                          ItineraryService.instance
-                              .resolveLocations(itinerary)
-                              .length;
+                      final stopCount = ItineraryService.instance
+                          .resolveLocations(itinerary)
+                          .length;
                       return ListTile(
                         title: Text(
                           itinerary.name,
@@ -217,7 +217,10 @@ class _PlansScreenState extends State<PlansScreen> {
   /// everywhere else on this screen — rather than each site's raw,
   /// Solo-only [LocationModel.budgetRange], which is what made the old
   /// combined receipt's totals inaccurate.
-  void _showReceiptForItinerary(BuildContext context, ItineraryModel itinerary) {
+  void _showReceiptForItinerary(
+    BuildContext context,
+    ItineraryModel itinerary,
+  ) {
     final sites = ItineraryService.instance.resolveLocations(itinerary);
     final lineItems = sites
         .map((site) => (name: site.name, cost: _scaledSiteCost(site).min))
@@ -229,7 +232,9 @@ class _PlansScreenState extends State<PlansScreen> {
       builder: (dialogContext) {
         return Dialog(
           backgroundColor: const Color(0xFFFFFDF7),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(22, 22, 22, 26),
             child: Column(
@@ -252,7 +257,11 @@ class _PlansScreenState extends State<PlansScreen> {
                     ),
                     GestureDetector(
                       onTap: () => Navigator.of(dialogContext).pop(),
-                      child: const Icon(Icons.close, size: 22, color: Colors.grey),
+                      child: const Icon(
+                        Icons.close,
+                        size: 22,
+                        color: Colors.grey,
+                      ),
                     ),
                   ],
                 ),
@@ -637,7 +646,10 @@ class _PlansScreenState extends State<PlansScreen> {
               // centered summary of every saved itinerary's stops and
               // running total, styled like a printed receipt.
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? colors.card : const Color(0xFFEDE7DC),
                   borderRadius: BorderRadius.circular(30),
@@ -739,7 +751,6 @@ class _PlansScreenState extends State<PlansScreen> {
       ),
     );
   }
-
 }
 
 // ─── Route Card ─────────────────────────────────────────────────────────────────
@@ -993,57 +1004,6 @@ class _ViewSavedItinerariesButton extends StatelessWidget {
   }
 }
 
-// ─── Receipt Dividers ───────────────────────────────────────────────────────
-// Small custom-painted dividers used by the itinerary receipt dialog
-// (_showItineraryReceipt) to mimic a printed receipt's dashed rule and
-// double rule at the bottom.
-
-class DottedDivider extends StatelessWidget {
-  const DottedDivider({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: const Size(double.infinity, 1),
-      painter: _DashedLinePainter(color: const Color(0xFF9C9C9C)),
-    );
-  }
-}
-
-class DoubleDivider extends StatelessWidget {
-  const DoubleDivider({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(height: 1.5, color: const Color(0xFF9C9C9C)),
-        const SizedBox(height: 3),
-        Container(height: 1.5, color: const Color(0xFF9C9C9C)),
-      ],
-    );
-  }
-}
-
-class _DashedLinePainter extends CustomPainter {
-  final Color color;
-  const _DashedLinePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1;
-    const dashWidth = 4.0;
-    const dashSpace = 3.0;
-    double startX = 0;
-    while (startX < size.width) {
-      canvas.drawLine(Offset(startX, 0), Offset(startX + dashWidth, 0), paint);
-      startX += dashWidth + dashSpace;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedLinePainter oldDelegate) => false;
-}
+// (The receipt dividers previously defined here now live in
+// `lib/widgets/receipt_dividers.dart` so the Home page's Transport &
+// Access option popup can reuse the exact same receipt treatment.)
