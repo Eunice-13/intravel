@@ -9,7 +9,7 @@ class _RawSite {
   final String id;
   final String name;
   final String
-  category; // Fortifications | Landmarks | Museums | Churches | Parks
+  category; // Fortifications | Landmarks | Museums | Churches | Parks | Cafe
   final String type;
   final String note;
   final String access;
@@ -22,6 +22,15 @@ class _RawSite {
   final List<String> relatedPlaceIds;
   final OperatingHours? officialHours;
   final TicketInfo? officialTicket;
+
+  /// Whether this site (Cafe category) offers WiFi (addendum spec 3
+  /// Section 2.2). Defaults to `false` for non-cafe categories.
+  final bool hasWifi;
+
+  /// Whether this site (Cafe category) offers power sockets/outlets for
+  /// laptops and devices (addendum spec 3 Section 2.2). Defaults to
+  /// `false` for non-cafe categories.
+  final bool hasSockets;
 
   /// Realistic per-person spending range (addendum spec 3.5). Every site
   /// gets one, including free/exterior sites, which still carry a small
@@ -44,6 +53,8 @@ class _RawSite {
     this.relatedPlaceIds = const [],
     this.officialHours,
     this.officialTicket,
+    this.hasWifi = false,
+    this.hasSockets = false,
     required this.budgetRange,
   });
 }
@@ -1300,6 +1311,83 @@ class LocationService {
         'pamantasan-ng-lungsod-ng-maynila',
         'bahay-tsinoy',
       ],
+    ),
+    // ─── Cafe sites (addendum spec 3 Section 1.1, 2.1): placeholder data
+    // for the new "Cafe (WiFi & Sockets)" filter, giving the toggle and
+    // map pin filtering something to display. Coordinates are realistic
+    // points within Intramuros; hasWifi/hasSockets back the pin-popup
+    // amenity indicators (addendum spec 3 Section 2.2).
+    _RawSite(
+      id: 'barbara-s-cafe',
+      budgetRange: const BudgetRange(min: 150, max: 400),
+      name: "Barbara's Heritage Cafe",
+      category: 'Cafe',
+      type: 'Cafe',
+      note: 'Colonial-style cafe with WiFi and workspace seating',
+      access: 'Free entry, pay per order',
+      photo: 'assets/intravel/assets/home/plaza-roma.jpg',
+      area: 'Plaza San Luis Complex, Intramuros',
+      history:
+          'A colonial-themed cafe within the Plaza San Luis Complex, popular with visitors and remote workers alike for its garden seating and reliable WiFi.',
+      highlights: [
+        'Garden and indoor seating',
+        'Free WiFi for customers',
+        'Power outlets at most tables',
+      ],
+      visitNote:
+          'Placeholder site data. A relaxed spot to rest and recharge devices while exploring Intramuros.',
+      coordinates: const LatLng(14.5896, 120.9739),
+      relatedPlaceIds: ['san-agustin-church', 'casa-manila-museum'],
+      hasWifi: true,
+      hasSockets: true,
+    ),
+    _RawSite(
+      id: 'cafe-de-muralla',
+      budgetRange: const BudgetRange(min: 100, max: 300),
+      name: 'Cafe de Muralla',
+      category: 'Cafe',
+      type: 'Cafe',
+      note: 'Cozy cafe along the old city walls, WiFi available',
+      access: 'Free entry, pay per order',
+      photo: 'assets/intravel/assets/home/plaza-roma.jpg',
+      area: 'Muralla Street, Intramuros',
+      history:
+          'A small cafe tucked along Muralla Street, near the old city walls, serving coffee and light meals to tourists and students from nearby schools.',
+      highlights: [
+        'Seating along the historic city wall',
+        'Free WiFi for customers',
+        'No dedicated power outlets',
+      ],
+      visitNote:
+          'Placeholder site data. Good for a quick coffee break between walking tours.',
+      coordinates: const LatLng(14.5911, 120.9758),
+      relatedPlaceIds: ['manila-cathedral', 'plaza-espana'],
+      hasWifi: true,
+      hasSockets: false,
+    ),
+    _RawSite(
+      id: 'fort-brew-coffee',
+      budgetRange: const BudgetRange(min: 120, max: 350),
+      name: 'Fort Brew Coffee',
+      category: 'Cafe',
+      type: 'Cafe',
+      note: 'Coffee shop near Fort Santiago with laptop-friendly seating',
+      access: 'Free entry, pay per order',
+      photo: 'assets/intravel/assets/home/fort-santiago.jpg',
+      area: 'Near Fort Santiago, Intramuros',
+      history:
+          'A modern coffee shop just outside Fort Santiago, catering to tourists and remote workers with dedicated workspace seating.',
+      highlights: [
+        'Laptop-friendly indoor seating',
+        'Free WiFi for customers',
+        'Power outlets at every table',
+      ],
+      visitNote:
+          'Placeholder site data. A convenient stop for visitors needing WiFi and charging before or after touring Fort Santiago.',
+      coordinates: const LatLng(14.5935, 120.9712),
+      relatedPlaceIds: ['fort-santiago', 'museo-ni-rizal'],
+      hasWifi: true,
+      hasSockets: true,
     ),
   ];
 
@@ -2717,6 +2805,8 @@ class LocationService {
       visitNote: site.visitNote,
       relatedPlaceIds: site.relatedPlaceIds,
       budgetRange: site.budgetRange,
+      hasWifi: site.hasWifi,
+      hasSockets: site.hasSockets,
     );
   }
 }

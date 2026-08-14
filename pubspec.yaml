@@ -26,6 +26,7 @@ dependencies:
   provider: ^6.1.2
   shimmer: ^3.0.0
   shared_preferences: ^2.5.4
+  google_generative_ai: 0.4.7
 
 dev_dependencies:
   flutter_test:
