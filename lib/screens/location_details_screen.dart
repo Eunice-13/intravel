@@ -6,6 +6,7 @@ import '../services/tts_service.dart';
 import '../services/location_service.dart';
 import '../services/saved_places_service.dart';
 import '../services/review_service.dart';
+import '../services/location_rating_service.dart';
 import '../widgets/location_photo.dart';
 import '../widgets/nav_flow_launcher.dart';
 import 'review_form_screen.dart';
@@ -55,13 +56,14 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
   /// existing default (spec's intentional 4.8 placeholder for zero-review
   /// locations, computed in `LocationService._buildLocation`) when there
   /// are still no reviews at all — this only affects what's *displayed*
-  /// here; it does not change that default logic itself.
+  /// here; it does not change that default logic itself. Delegates the
+  /// actual merge/average to [computeLocationRatingSummary] so this
+  /// number matches whatever the Ratings list (Plans → Browse by Rating)
+  /// shows for the same location, rather than each screen computing its
+  /// own slightly different version.
   double get _displayedRating {
-    final reviews = _allReviews;
-    if (reviews.isEmpty) return widget.location.rating;
-    final average =
-        reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
-    return double.parse(average.toStringAsFixed(1));
+    final summary = computeLocationRatingSummary(widget.location);
+    return summary.hasRatings ? summary.average : widget.location.rating;
   }
 
   Future<void> _openReviewForm(

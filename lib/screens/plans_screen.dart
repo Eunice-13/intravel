@@ -11,6 +11,7 @@ import 'location_details_screen.dart';
 import 'itinerary_create_screen.dart';
 import 'route_plan_options_screen.dart';
 import 'favorites_screen.dart';
+import 'ratings_screen.dart';
 
 /// Plans screen, ported from the Eunice-branch `#screen-plans` markup and
 /// extended per the addendum spec (Section 3): eyebrow header + filter
@@ -558,6 +559,46 @@ class _PlansScreenState extends State<PlansScreen> {
               // itineraries aren't only reachable via Settings → Saved
               // Places.
               _ViewSavedItinerariesButton(colors: colors, isDark: isDark),
+              const SizedBox(height: 9),
+
+              // ─── Browse by Rating ───────────────────────────────────────
+              // Opens the dedicated Ratings list: every site sorted by its
+              // live review-aggregate rating (seeded + user-submitted),
+              // filterable by the same categories as the site list below.
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const RatingsScreen()),
+                  );
+                },
+                child: Container(
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: isDark ? colors.card : const Color(0xFFE1EEE5),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.star_rounded,
+                        size: 15,
+                        color: isDark ? colors.ink : colors.forest,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Browse by Rating',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? colors.ink : colors.forest,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
 
               // ─── Curated Routes (spec 3.4) ─────────────────────────────
