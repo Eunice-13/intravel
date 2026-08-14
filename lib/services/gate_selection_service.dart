@@ -5,8 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// the first-launch onboarding prompt has already been shown so it's never
 /// re-shown automatically after the user picks a gate or skips it.
 class GateSelectionService extends ChangeNotifier {
-  static final GateSelectionService instance =
-      GateSelectionService._internal();
+  static final GateSelectionService instance = GateSelectionService._internal();
   GateSelectionService._internal();
 
   static const String _onboardingCompleteKey =
@@ -44,6 +43,16 @@ class GateSelectionService extends ChangeNotifier {
       await prefs.setString(_selectedGateIdKey, gateId);
       await prefs.setBool(_onboardingCompleteKey, true);
     } catch (_) {}
+  }
+
+  /// Clears the in-memory selection so tests sharing this singleton don't
+  /// leak state between cases. Does not touch persisted prefs — tests stub
+  /// those via `SharedPreferences.setMockInitialValues`.
+  @visibleForTesting
+  void resetForTesting() {
+    _selectedGateId = null;
+    _onboardingComplete = false;
+    _isLoaded = false;
   }
 
   /// Marks onboarding as complete without recording a gate (Skip).

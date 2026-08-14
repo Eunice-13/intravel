@@ -90,10 +90,27 @@ class ChatbotScopeClassifier {
   /// spec's confirmed decision, even though they're geographically close
   /// and travel-related.
   static const List<String> _manilaWideTerms = [
-    'airport', 'naia', 'makati', 'quezon city', 'bgc', 'taguig',
-    'pasay', 'ortigas', 'manila bay', 'divisoria', 'binondo',
-    'mall of asia', 'ermita', 'malate', 'from the airport', 'to the airport',
-    'metro manila', 'edsa', 'lrt', 'mrt', 'jeepney fare',
+    'airport',
+    'naia',
+    'makati',
+    'quezon city',
+    'bgc',
+    'taguig',
+    'pasay',
+    'ortigas',
+    'manila bay',
+    'divisoria',
+    'binondo',
+    'mall of asia',
+    'ermita',
+    'malate',
+    'from the airport',
+    'to the airport',
+    'metro manila',
+    'edsa',
+    'lrt',
+    'mrt',
+    'jeepney fare',
   ];
 
   ChatbotScopeResult classify(
@@ -109,29 +126,37 @@ class ChatbotScopeClassifier {
     }
 
     if (normalized.isEmpty) {
-      return const ChatbotScopeResult(
-        true,
-        ChatbotScopeReason.ambiguousShort,
-      );
+      return const ChatbotScopeResult(true, ChatbotScopeReason.ambiguousShort);
     }
 
-    // Manila-wide check runs before the generic "unrelated" fallback,
-    // and before app-feature/general-topic checks, since a message like
-    // "how do I get to Intramuros from the airport" would otherwise also
-    // match "intramuros" and be waved through — the spec is explicit
-    // that this specific pattern must still be declined.
+    // App-feature vocabulary is checked BEFORE the Manila-wide terms.
+    //
+    // The Manila-wide list exists to decline questions about travelling
+    // *to* Intramuros from elsewhere in the metro ("how do I get here
+    // from the airport"), which the spec is explicit about. But because
+    // it matched on bare substrings and ran first, it also swallowed
+    // legitimate in-app questions that merely *reference* a metro
+    // landmark — most visibly "which gate is closest to the LRT?", which
+    // is squarely an Intramuros access question about the app's own gate
+    // data, yet got hard-declined.
+    //
+    // Checking app-feature terms first means a message that's clearly
+    // about an app feature (gates, itinerary, navigation, filters) stays
+    // in scope even if it name-drops a metro landmark as a reference
+    // point, while a message whose *only* signal is a metro landmark
+    // still falls through to the decline below.
+    for (final term in _appFeatureTerms) {
+      if (normalized.contains(term)) {
+        return const ChatbotScopeResult(true, ChatbotScopeReason.appFeature);
+      }
+    }
+
     for (final term in _manilaWideTerms) {
       if (normalized.contains(term)) {
         return const ChatbotScopeResult(
           false,
           ChatbotScopeReason.outOfScopeManilaWide,
         );
-      }
-    }
-
-    for (final term in _appFeatureTerms) {
-      if (normalized.contains(term)) {
-        return const ChatbotScopeResult(true, ChatbotScopeReason.appFeature);
       }
     }
 
@@ -150,10 +175,7 @@ class ChatbotScopeClassifier {
       // location fragment the caller's entity check already missed) —
       // let the engine treat it as in-scope/continuation rather than
       // refusing a two-word message outright.
-      return const ChatbotScopeResult(
-        true,
-        ChatbotScopeReason.ambiguousShort,
-      );
+      return const ChatbotScopeResult(true, ChatbotScopeReason.ambiguousShort);
     }
 
     // Nothing above matched: this offline keyword list will never be
@@ -196,12 +218,29 @@ class ChatbotScopeClassifier {
   /// — that's the exact rigidity this whole classifier update is fixing.
   bool _looksClearlyUnrelated(String normalized) {
     const unrelatedMarkers = [
-      'capital of', 'president of', 'weather in new york', 'stock market',
-      'football score', 'basketball score', 'world cup', 'nba', 'recipe for',
-      'movie recommendation', 'tv show', 'celebrity', 'politics',
-      'election', 'cryptocurrency', 'bitcoin', 'stock price',
-      'solve this equation', 'translate this to', 'write me a poem',
-      'write code', 'programming language', 'homework',
+      'capital of',
+      'president of',
+      'weather in new york',
+      'stock market',
+      'football score',
+      'basketball score',
+      'world cup',
+      'nba',
+      'recipe for',
+      'movie recommendation',
+      'tv show',
+      'celebrity',
+      'politics',
+      'election',
+      'cryptocurrency',
+      'bitcoin',
+      'stock price',
+      'solve this equation',
+      'translate this to',
+      'write me a poem',
+      'write code',
+      'programming language',
+      'homework',
     ];
     return unrelatedMarkers.any(normalized.contains);
   }

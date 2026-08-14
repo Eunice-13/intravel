@@ -6,6 +6,7 @@ import '../services/tts_service.dart';
 import '../services/location_service.dart';
 import '../services/saved_places_service.dart';
 import '../services/review_service.dart';
+import '../services/chatbot_page_context_service.dart';
 import '../widgets/location_photo.dart';
 import '../widgets/nav_flow_launcher.dart';
 import 'review_form_screen.dart';
@@ -27,6 +28,21 @@ class LocationDetailsScreen extends StatefulWidget {
 class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
   final TtsService _ttsService = TtsService();
   bool get _isSaved => SavedPlacesService.instance.isSaved(widget.location.id);
+
+  @override
+  void initState() {
+    super.initState();
+    // Publish which location is on screen so the assistant can resolve
+    // "tell me more about this place" / "how much does it cost" without
+    // the user naming it (chatbot spec Section 6).
+    ChatbotPageContextService.instance.setCurrentLocation(widget.location.id);
+  }
+
+  @override
+  void dispose() {
+    ChatbotPageContextService.instance.clearCurrentLocation(widget.location.id);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

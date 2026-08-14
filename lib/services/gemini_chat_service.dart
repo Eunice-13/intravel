@@ -1,20 +1,18 @@
 import 'package:flutter/foundation.dart' show debugPrint;
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/chat_message_model.dart';
 import 'chat_memory_service.dart';
+import 'chatbot_system_instruction.dart';
 import 'gemini_api_key_loader.dart';
 
-/// Path to the chatbot's persona/scope/action-rules spec (chatbot spec
-/// document itself), bundled as an asset (see pubspec.yaml) so it can be
-/// read at runtime and passed to the model as its `systemInstruction` —
-/// this is what grounds IntraBadi's persona, Intramuros-only scope, and
-/// action-confirmation rules directly in the model's instructions rather
-/// than re-deriving them ad hoc in Dart code.
-const String _chatbotSpecAssetPath =
-    'docs/intramuros-app-spec-chatbot.md';
+// IntraBadi's persona/scope/grounding/action rules now live in
+// `chatbot_system_instruction.dart` as a compiled-in Dart constant
+// ([kChatbotSystemInstruction]) rather than being read from the bundled
+// chatbot spec markdown at runtime. See that file's doc comment for why:
+// the docs folder no longer ships inside the APK, and the system
+// instruction can never fail to load and take chat down with it.
 
 /// Function name for the `addToItinerary` tool (spec Section 4: adding a
 /// location to the user's itinerary). State-changing, so the model
@@ -58,11 +56,11 @@ final List<Tool> chatbotTools = [
       FunctionDeclaration(
         kAddToItineraryFunctionName,
         'Adds a specific Intramuros location to the user\'s itinerary. '
-            'Call this whenever the user asks, in any phrasing, to add, '
-            'save, include, or plan a stop/place/location into their '
-            'itinerary or trip — this is a state-changing action, so it '
-            'will always be confirmed with the user (Yes/No) before it '
-            'actually takes effect.',
+        'Call this whenever the user asks, in any phrasing, to add, '
+        'save, include, or plan a stop/place/location into their '
+        'itinerary or trip — this is a state-changing action, so it '
+        'will always be confirmed with the user (Yes/No) before it '
+        'actually takes effect.',
         Schema.object(
           properties: {
             'locationName': Schema.string(
@@ -80,11 +78,11 @@ final List<Tool> chatbotTools = [
       FunctionDeclaration(
         kCreateItineraryFunctionName,
         'Creates a brand-new, empty itinerary for the user. Call this '
-            'whenever the user asks, in any phrasing, to create, start, '
-            'make, or plan a new itinerary/trip/plan — as distinct from '
-            'adding a location to one that already exists. This is a '
-            'state-changing action, so it will always be confirmed with '
-            'the user (Yes/No) before it actually takes effect.',
+        'whenever the user asks, in any phrasing, to create, start, '
+        'make, or plan a new itinerary/trip/plan — as distinct from '
+        'adding a location to one that already exists. This is a '
+        'state-changing action, so it will always be confirmed with '
+        'the user (Yes/No) before it actually takes effect.',
         Schema.object(
           properties: {
             'itineraryName': Schema.string(
@@ -100,10 +98,10 @@ final List<Tool> chatbotTools = [
       FunctionDeclaration(
         kCheckPriceFunctionName,
         'Looks up the real entrance fee / ticket price for a specific '
-            'Intramuros location from the app\'s own dataset. Call this '
-            'whenever the user asks about cost, price, fee, or "magkano" '
-            'for a specific place, instead of guessing or estimating a '
-            'price yourself.',
+        'Intramuros location from the app\'s own dataset. Call this '
+        'whenever the user asks about cost, price, fee, or "magkano" '
+        'for a specific place, instead of guessing or estimating a '
+        'price yourself.',
         Schema.object(
           properties: {
             'locationName': Schema.string(
@@ -256,7 +254,7 @@ class GeminiChatService {
       );
     }
 
-    final systemInstructionText = await _loadSystemInstructionText();
+    const systemInstructionText = kChatbotSystemInstruction;
 
     final model = GenerativeModel(
       model: _modelName,
@@ -270,7 +268,7 @@ class GeminiChatService {
 
     debugPrint(
       '[GeminiChatService] Started a new $_modelName chat session with '
-      'the chatbot spec loaded as systemInstruction '
+      'the compiled-in systemInstruction '
       '(${systemInstructionText.length} chars), '
       '${chatbotTools.first.functionDeclarations?.length ?? 0} tools, and '
       '${seededHistory.length} prior turns replayed from '
@@ -305,66 +303,6 @@ class GeminiChatService {
     }
     return history;
   }
-
-  /// Reads the bundled chatbot spec markdown to use as the model's
-  /// `systemInstruction`, with [_naturalLanguageGuidance] appended.
-  /// Throws [GeminiChatException] if the asset can't be loaded (e.g. not
-  /// declared in pubspec.yaml, missing file) rather than silently
-  /// starting the model with no persona/guardrails at all.
-  Future<String> _loadSystemInstructionText() async {
-    try {
-      final specText = await rootBundle.loadString(_chatbotSpecAssetPath);
-      return '$specText\n\n$_naturalLanguageGuidance';
-    } catch (e) {
-      throw GeminiChatException(
-        'Could not load the chatbot spec asset ($_chatbotSpecAssetPath) '
-        'to use as the system instruction.',
-        cause: e,
-      );
-    }
-  }
-
-  /// Extra behavioral guidance appended after the chatbot spec markdown
-  /// itself (see [_loadSystemInstructionText]) — the spec document
-  /// describes *what* the assistant is scoped to and *what* it can do,
-  /// but doesn't tell the model *how loosely* to interpret a user's
-  /// actual wording against those capabilities. Without this, a natural
-  /// reply like "I want to add specific stops" (clearly an
-  /// itinerary-building request, chatbot spec Section 4) could read to
-  /// the model as too vague to act on, and it would fall back to a
-  /// generic "I can only help with Intramuros" -style non-answer instead
-  /// of asking a clarifying follow-up or just recognizing the intent —
-  /// exactly the rigidity this instruction is meant to fix.
-  static const String _naturalLanguageGuidance =
-      '## Additional behavior notes (natural-language flexibility)\n'
-      '- Interpret the user\'s **intent**, not just literal keyword '
-      'matches. Casual, indirect, or partial phrasing that clearly '
-      'relates to Intramuros, a location in the app, or one of your '
-      'action capabilities (adding to itinerary, creating an itinerary, '
-      'starting navigation, checking a price, changing a setting) should '
-      'still be understood as that request, even if it doesn\'t use the '
-      'exact wording of your documented examples. For instance, "I want '
-      'to add specific stops," "can we include a few more places," or '
-      '"let\'s put together a route" are all itinerary-building requests '
-      '— treat them as such rather than defaulting to the out-of-scope '
-      'decline message.\n'
-      '- Always use the full conversation history already in this '
-      'session to interpret follow-ups, pronouns ("that place", "it"), '
-      'and incomplete requests — a user rarely repeats a location name '
-      'or context they already gave you a turn or two ago.\n'
-      '- If a message is genuinely ambiguous even with that context '
-      '(e.g. you truly cannot tell which location or action they mean), '
-      'ask a short clarifying question instead of declining outright — '
-      'reserve the "I can only help with Intramuros and this app" '
-      'decline strictly for messages that are actually unrelated to '
-      'Intramuros, this app, or the user\'s own itinerary/data, per the '
-      'scope rules above — not for messages that are in-scope but just '
-      'phrased casually or incompletely.\n'
-      '- When a request should trigger one of your tools '
-      '(addToItinerary, createItinerary, checkPrice), call that tool '
-      'rather than only describing in text what you would do — this '
-      'applies even when the phrasing is conversational rather than a '
-      'direct command.';
 
   /// Sends [message] to the model as the next turn in this session's
   /// history and returns either its text response or the function
@@ -442,9 +380,7 @@ class GeminiChatService {
 
     final text = response.text;
     if (text == null || text.isEmpty) {
-      throw const GeminiChatException(
-        'The model returned an empty response.',
-      );
+      throw const GeminiChatException('The model returned an empty response.');
     }
     return GeminiChatResult(text: text);
   }
