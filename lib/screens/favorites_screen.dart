@@ -16,14 +16,22 @@ import 'itinerary_navigation_overview_screen.dart';
 /// Backed by [SavedPlacesService] so saves made on the details screen show
 /// up here immediately and persist across app restarts.
 class FavoritesScreen extends StatefulWidget {
-  const FavoritesScreen({super.key});
+  /// Which hub tab to show first — defaults to 'Locations' to match the
+  /// original branch behavior. Pass 'Itineraries' when deep-linking here
+  /// from an entry point whose whole purpose is surfacing saved
+  /// itineraries (e.g. the Navigation screen's Itineraries chip, or the
+  /// Home screen's "View Saved Itineraries" button), so the user lands
+  /// straight on the relevant tab instead of Locations.
+  final String initialTab;
+
+  const FavoritesScreen({super.key, this.initialTab = 'Locations'});
 
   @override
   State<FavoritesScreen> createState() => _FavoritesScreenState();
 }
 
 class _FavoritesScreenState extends State<FavoritesScreen> {
-  String _selectedTab = 'Locations';
+  late String _selectedTab = widget.initialTab;
 
   @override
   void initState() {
@@ -66,27 +74,31 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '— SAVED',
-                            style: TextStyle(
-                              color: colors.accent,
-                              fontSize: 12,
-                              letterSpacing: 1.1,
+                      Padding(
+                        // Adjust this value (e.g., 120-200) depending on how far right you want it
+                        padding: const EdgeInsets.only(left: 160),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              '— SAVED',
+                              style: TextStyle(
+                                color: colors.accent,
+                                fontSize: 12,
+                                letterSpacing: 1.1,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Your Hub',
-                            style: TextStyle(
-                              fontFamily: AppTheme.serifFont,
-                              fontSize: 27,
-                              color: colors.ink,
+                            const SizedBox(height: 4),
+                            Text(
+                              'Your Hub',
+                              style: TextStyle(
+                                fontFamily: AppTheme.serifFont,
+                                fontSize: 27,
+                                color: colors.ink,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),

@@ -2,11 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "InTravel (Pixel 7)",
+      "name": "InTravel (Pixel 7 emulator)",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "deviceId": "emulator-5554"
+      "deviceId": "emulator-5554",
+      "toolArgs": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "InTravel (connected device)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": ["--dart-define-from-file=env.json"]
     }
   ]
 }

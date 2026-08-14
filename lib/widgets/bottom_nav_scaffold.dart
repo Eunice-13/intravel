@@ -38,7 +38,7 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
       HomeScreen(onOpenPlans: () => _goToTab(2)),
       const NavigationScreen(),
       const PlansScreen(),
-      ProfileScreen(onOpenAccessibility: () => _goToTab(1)),
+      const ProfileScreen(),
     ];
 
     return Scaffold(
@@ -73,42 +73,35 @@ class _BottomNavScaffoldState extends State<BottomNavScaffold> {
                 ],
               ),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: _NavButton(
-                      colors: colors,
-                      icon: Icons.home_rounded,
-                      label: 'Home',
-                      isActive: _currentIndex == 0,
-                      onTap: () => _goToTab(0),
-                    ),
+                  _NavButton(
+                    colors: colors,
+                    icon: Icons.home_rounded,
+                    label: 'Home',
+                    isActive: _currentIndex == 0,
+                    onTap: () => _goToTab(0),
                   ),
-                  Expanded(
-                    child: _NavButton(
-                      colors: colors,
-                      icon: Icons.explore_outlined,
-                      label: 'Navigation',
-                      isActive: _currentIndex == 1,
-                      onTap: () => _goToTab(1),
-                    ),
+                  _NavButton(
+                    colors: colors,
+                    icon: Icons.explore_outlined,
+                    label: 'Navigation',
+                    isActive: _currentIndex == 1,
+                    onTap: () => _goToTab(1),
                   ),
-                  Expanded(
-                    child: _NavButton(
-                      colors: colors,
-                      icon: Icons.map_outlined,
-                      label: 'Plans',
-                      isActive: _currentIndex == 2,
-                      onTap: () => _goToTab(2),
-                    ),
+                  _NavButton(
+                    colors: colors,
+                    icon: Icons.map_outlined,
+                    label: 'Plans',
+                    isActive: _currentIndex == 2,
+                    onTap: () => _goToTab(2),
                   ),
-                  Expanded(
-                    child: _NavButton(
-                      colors: colors,
-                      icon: Icons.person_outline_rounded,
-                      label: 'Settings',
-                      isActive: _currentIndex == 3,
-                      onTap: () => _goToTab(3),
-                    ),
+                  _NavButton(
+                    colors: colors,
+                    icon: Icons.person_outline_rounded,
+                    label: 'Settings',
+                    isActive: _currentIndex == 3,
+                    onTap: () => _goToTab(3),
                   ),
                 ],
               ),
@@ -147,6 +140,7 @@ class _NavButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         height: 50,
+        constraints: const BoxConstraints(minWidth: 50),
         padding: isActive
             ? const EdgeInsets.symmetric(horizontal: 15)
             : EdgeInsets.zero,
@@ -155,14 +149,8 @@ class _NavButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(25),
         ),
         alignment: Alignment.center,
-        // `mainAxisSize: min` alone isn't enough here: this Row sits inside
-        // an `Expanded` slot with a *tight* width (one quarter of the bar),
-        // so if the icon + label combo is wider than that slot — e.g. the
-        // 10-character "Navigation" label — it used to overflow and throw a
-        // RenderFlex exception that aborted the whole frame's paint (which
-        // is why the entire nav bar, and whatever screen shared that frame,
-        // appeared broken). Wrapping the label in `Flexible` + ellipsis lets
-        // it shrink to fit instead of overflowing.
+        // The tab row sizes to its visual content: inactive tabs remain
+        // compact while the active tab expands into its icon-and-label pill.
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -173,16 +161,12 @@ class _NavButton extends StatelessWidget {
             ),
             if (isActive) ...[
               const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                  style: const TextStyle(
-                    fontFamily: AppTheme.serifFont,
-                    fontSize: 14,
-                    color: Colors.white,
-                  ),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: AppTheme.serifFont,
+                  fontSize: 14,
+                  color: Colors.white,
                 ),
               ),
             ],

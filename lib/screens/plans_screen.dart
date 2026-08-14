@@ -2,15 +2,25 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/route_service.dart';
 import '../services/location_service.dart';
+import '../services/itinerary_service.dart';
+import '../models/itinerary_model.dart';
 import '../models/route_model.dart';
 import '../models/location_model.dart';
+import '../widgets/budget_filter_sheet.dart';
+import '../widgets/receipt_dividers.dart';
 import 'location_details_screen.dart';
 import 'itinerary_create_screen.dart';
+import 'route_plan_options_screen.dart';
+import 'favorites_screen.dart';
 
-/// Plans screen, ported from the Eunice-branch `#screen-plans` markup:
-/// eyebrow header + filter icon, traveler-size row with contextual hints,
-/// plan-category chips, curated routes that accumulate a running budget on
-/// tap, and the full "All tourist sites" directory list.
+/// Plans screen, ported from the Eunice-branch `#screen-plans` markup and
+/// extended per the addendum spec (Section 3): eyebrow header + filter
+/// icon opening a detailed budget-range sheet, traveler-size row that
+/// scales displayed cost estimates only (never filters visible
+/// sites/routes), plan-category chips, curated routes that open a
+/// system-generated set of plan options to save into the Itinerary Hub,
+/// a budget bar shared with the detailed filter sheet, and the full "All
+/// tourist sites" directory list.
 class PlansScreen extends StatefulWidget {
   const PlansScreen({super.key});
 
@@ -21,21 +31,23 @@ class PlansScreen extends StatefulWidget {
 class _PlansScreenState extends State<PlansScreen> {
   String _selectedTraveler = 'Solo';
   String _planFilter = 'all';
-  int _estimatedTotal = 50;
 
-  /// Max entrance fee (per adult) a user is willing to pay, entered in the
-  /// dedicated "Filter by budget" field above the site list (spec 3.2).
-  /// `null` means no filter is applied. This is intentionally separate from
-  /// [_estimatedTotal] above, which only tracks a running total from tapping
-  /// curated routes and never filters the site list.
-  int? _maxBudgetFilter;
-  final TextEditingController _budgetFilterController = TextEditingController();
+  /// Group-size cost multipliers (addendum spec 3.2): selecting a group
+  /// size never filters which sites/routes are visible — it only scales
+  /// the displayed per-person cost estimate into a total that reflects the
+  /// selected group size.
+  static const Map<String, int> _groupMultipliers = {
+    'Solo': 1,
+    'Couple': 2,
+    'Group': 5,
+    'Large': 10,
+  };
 
-  @override
-  void dispose() {
-    _budgetFilterController.dispose();
-    super.dispose();
-  }
+  /// Shared budget-range filter state (addendum spec 3.1, 3.6): the
+  /// detailed filter sheet opened from the header icon reads from and
+  /// writes to this state, which in turn filters the curated routes and
+  /// site list below.
+  PlanBudgetFilter _budgetFilter = PlanBudgetFilter.none;
 
   static const List<String> _travelers = ['Solo', 'Couple', 'Group', 'Large'];
   static const Map<String, String> _travelerHints = {
@@ -51,28 +63,304 @@ class _PlansScreenState extends State<PlansScreen> {
     {'key': 'Museums', 'label': 'Museums'},
     {'key': 'Churches', 'label': 'Churches'},
     {'key': 'Parks', 'label': 'Parks'},
+    {'key': 'Schools', 'label': 'Schools'},
   ];
 
-  void _addRouteToBudget(CuratedRoute route) {
-    setState(() => _estimatedTotal += route.addToBudget);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${route.name} added'),
-        duration: const Duration(seconds: 1),
+  int get _groupMultiplier => _groupMultipliers[_selectedTraveler] ?? 1;
+
+  /// Scales a site's per-person [LocationModel.budgetRange] by the
+  /// selected group size.
+  ({double min, double max}) _scaledSiteCost(LocationModel site) {
+    final scaled = site.budgetRange.scaledBy(_groupMultiplier);
+    return (min: scaled.min, max: scaled.max);
+  }
+
+  /// Scales a curated route's displayed cost range by the selected group
+  /// size. Mirrors the HTML prototype's logic: the range spans the
+  /// cheapest to the most expensive *single* qualifying site (i.e. what one
+  /// stop on this route might cost), not a sum across every qualifying
+  /// site — summing would make routes with many qualifying sites (e.g.
+  /// Fortifications) look far more expensive than any actual visit.
+  ({double min, double max})? _scaledRouteCost(CuratedRoute route) {
+    final sites = ItineraryService.instance.qualifyingSitesForRoute(route);
+    if (sites.isEmpty) return null;
+    final mins = sites.map((site) => site.budgetRange.min);
+    final maxs = sites.map((site) => site.budgetRange.max);
+    final min = mins.reduce((a, b) => a < b ? a : b);
+    final max = maxs.reduce((a, b) => a > b ? a : b);
+    return (min: min * _groupMultiplier, max: max * _groupMultiplier);
+  }
+
+  bool _siteWithinBudget(LocationModel site) {
+    if (!_budgetFilter.isActive) return true;
+    final cost = _scaledSiteCost(site);
+    return _budgetFilter.allowsRange(cost.min, cost.max);
+  }
+
+  bool _routeWithinBudget(CuratedRoute route) {
+    if (!_budgetFilter.isActive) return true;
+    final cost = _scaledRouteCost(route);
+    if (cost == null) return true;
+    return _budgetFilter.allowsRange(cost.min, cost.max);
+  }
+
+  void _applyBudgetFilter(PlanBudgetFilter next) {
+    setState(() => _budgetFilter = next);
+  }
+
+  Future<void> _openBudgetSheet() async {
+    final result = await showBudgetFilterSheet(context, _budgetFilter);
+    if (result != null) _applyBudgetFilter(result);
+  }
+
+  Future<void> _openRoutePlanOptions(CuratedRoute route) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => RoutePlanOptionsScreen(route: route)),
+    );
+  }
+
+  /// Entry point for the "View Itinerary" button: if the user has no
+  /// saved itineraries at all, shows a quick "No Saved Itineraries yet!"
+  /// message instead of an empty picker/receipt. Otherwise opens a picker
+  /// sheet so the user chooses *which* saved itinerary to view a summary
+  /// for — a combined summary across every itinerary was misleading when
+  /// the same site appeared in more than one, so each itinerary now gets
+  /// its own accurate receipt.
+  void _showItineraryReceipt(BuildContext context) {
+    final itineraries = ItineraryService.instance.itineraries;
+    if (itineraries.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No Saved Itineraries yet!')),
+      );
+      return;
+    }
+    if (itineraries.length == 1) {
+      _showReceiptForItinerary(context, itineraries.first);
+      return;
+    }
+    _showItineraryPicker(context, itineraries);
+  }
+
+  /// Bottom sheet letting the user pick which saved itinerary to view a
+  /// cost summary for, shown whenever more than one itinerary is saved.
+  void _showItineraryPicker(
+    BuildContext context,
+    List<ItineraryModel> itineraries,
+  ) {
+    final colors = AppColors.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'View summary for which itinerary?',
+                  style: TextStyle(
+                    fontFamily: AppTheme.serifFont,
+                    fontSize: 18,
+                    color: colors.ink,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: itineraries.length,
+                    itemBuilder: (context, index) {
+                      final itinerary = itineraries[index];
+                      final stopCount = ItineraryService.instance
+                          .resolveLocations(itinerary)
+                          .length;
+                      return ListTile(
+                        title: Text(
+                          itinerary.name,
+                          style: TextStyle(color: colors.ink),
+                        ),
+                        subtitle: Text(
+                          '$stopCount stop${stopCount == 1 ? '' : 's'}',
+                          style: TextStyle(color: colors.muted),
+                        ),
+                        trailing: Icon(
+                          Icons.receipt_long_rounded,
+                          color: colors.forest,
+                          size: 18,
+                        ),
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          _showReceiptForItinerary(context, itinerary);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Opens a centered, receipt-styled dialog summarising [itinerary]'s
+  /// stops with a per-stop price and running total. Costs use
+  /// [_scaledSiteCost] — the same group-size-scaled figure shown
+  /// everywhere else on this screen — rather than each site's raw,
+  /// Solo-only [LocationModel.budgetRange], which is what made the old
+  /// combined receipt's totals inaccurate.
+  void _showReceiptForItinerary(
+    BuildContext context,
+    ItineraryModel itinerary,
+  ) {
+    final sites = ItineraryService.instance.resolveLocations(itinerary);
+    final lineItems = sites
+        .map((site) => (name: site.name, cost: _scaledSiteCost(site).min))
+        .toList();
+    final total = lineItems.fold<double>(0, (sum, item) => sum + item.cost);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: const Color(0xFFFFFDF7),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 22, 22, 26),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        itinerary.name.toUpperCase(),
+                        style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.of(dialogContext).pop(),
+                      child: const Icon(
+                        Icons.close,
+                        size: 22,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 2, bottom: 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '$_selectedTraveler · ${lineItems.length} stop${lineItems.length == 1 ? '' : 's'}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: DottedDivider(),
+                ),
+                if (lineItems.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 6),
+                    child: Text(
+                      'This itinerary has no stops yet.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                      textAlign: TextAlign.center,
+                    ),
+                  )
+                else
+                  ...lineItems.map(
+                    (item) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              item.name,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                fontSize: 13,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            '₱${item.cost.round()}',
+                            style: const TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 10),
+                  child: DottedDivider(),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'TOTAL',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '₱${total.round()}',
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 10),
+                  child: DoubleDivider(),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = AppColors.of(context);
-    final routes = RouteService().getRoutesByCategory(_planFilter);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final allRoutes = RouteService().getAllRoutes();
+    final routes = allRoutes.where(_routeWithinBudget).toList();
     final sites = LocationService().getAllLocations().where((s) {
       final matchesCategory = _planFilter == 'all' || s.category == _planFilter;
-      final matchesBudget =
-          _maxBudgetFilter == null ||
-          s.ticketInfo.adultPrice <= _maxBudgetFilter!;
-      return matchesCategory && matchesBudget;
+      return matchesCategory && _siteWithinBudget(s);
     }).toList();
 
     return Scaffold(
@@ -91,7 +379,7 @@ class _PlansScreenState extends State<PlansScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '— INTRAMUROS',
+                        '— ITINERARY PLANNER',
                         style: TextStyle(
                           color: colors.accent,
                           fontSize: 12,
@@ -100,7 +388,7 @@ class _PlansScreenState extends State<PlansScreen> {
                       ),
                       const SizedBox(height: 7),
                       Text(
-                        'Travel Your Way',
+                        'Plan Your Way',
                         style: TextStyle(
                           fontFamily: AppTheme.serifFont,
                           fontSize: 27,
@@ -110,17 +398,24 @@ class _PlansScreenState extends State<PlansScreen> {
                       ),
                     ],
                   ),
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEEE8DF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.tune_rounded,
-                      color: colors.ink,
-                      size: 22,
+                  GestureDetector(
+                    onTap: _openBudgetSheet,
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _budgetFilter.isActive
+                            ? colors.forest
+                            : colors.card,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.tune_rounded,
+                        color: _budgetFilter.isActive
+                            ? Colors.white
+                            : colors.ink,
+                        size: 22,
+                      ),
                     ),
                   ),
                 ],
@@ -143,9 +438,7 @@ class _PlansScreenState extends State<PlansScreen> {
                           height: 70,
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: isActive
-                                ? colors.forest
-                                : const Color(0xFFEDE7DC),
+                            color: isActive ? colors.forest : colors.card,
                             borderRadius: BorderRadius.circular(22),
                           ),
                           child: Text(
@@ -181,7 +474,8 @@ class _PlansScreenState extends State<PlansScreen> {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: _planChips.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 12),
                   itemBuilder: (context, index) {
                     final chip = _planChips[index];
                     final isActive = chip['key'] == _planFilter;
@@ -192,7 +486,9 @@ class _PlansScreenState extends State<PlansScreen> {
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: isActive
-                              ? const Color(0xFF1D7654)
+                              ? (Theme.of(context).brightness == Brightness.dark
+                                    ? colors.accent
+                                    : const Color(0xFF1D7654))
                               : colors.card,
                           borderRadius: BorderRadius.circular(24),
                         ),
@@ -263,9 +559,17 @@ class _PlansScreenState extends State<PlansScreen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 9),
+
+              // ─── View Saved Itineraries ─────────────────────────────────
+              // Companion to "Build your own itinerary" above — links
+              // straight to the Itinerary Hub tab of "Your Hub" so saved
+              // itineraries aren't only reachable via Settings → Saved
+              // Places.
+              _ViewSavedItinerariesButton(colors: colors, isDark: isDark),
               const SizedBox(height: 20),
 
-              // ─── Curated Routes ────────────────────────────────────────
+              // ─── Curated Routes (spec 3.4) ─────────────────────────────
               Text(
                 'CURATED ROUTES',
                 style: TextStyle(
@@ -275,136 +579,89 @@ class _PlansScreenState extends State<PlansScreen> {
                 ),
               ),
               const SizedBox(height: 11),
-              ...routes.map(
-                (route) => _RouteCard(
-                  colors: colors,
-                  route: route,
-                  onTap: () => _addRouteToBudget(route),
+              if (routes.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text(
+                    'No curated routes match this budget range.',
+                    style: TextStyle(fontSize: 12, color: colors.muted),
+                  ),
+                )
+              else
+                ...routes.map(
+                  (route) => _RouteCard(
+                    colors: colors,
+                    route: route,
+                    scaledCost: _scaledRouteCost(route),
+                    onTap: () => _openRoutePlanOptions(route),
+                  ),
                 ),
-              ),
               const SizedBox(height: 20),
 
-              // ─── Budget ────────────────────────────────────────────────
+              // ─── View Itinerary (receipt summary) ───────────────────────
+              // Replaces the old free-text budget bar: a compact bar with
+              // a "Your saved stops" label on the left and a receipt-style
+              // "View Itinerary" button on the right that pops up a
+              // centered summary of every saved itinerary's stops and
+              // running total, styled like a printed receipt.
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEDE7DC),
+                  color: isDark ? colors.card : const Color(0xFFEDE7DC),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Expanded(
-                      child: TextField(
-                        keyboardType: TextInputType.number,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: const Color(0xFF65746C),
-                        ),
-                        decoration: const InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          hintText: '₱ Type your total budget…',
-                        ),
-                        onChanged: (v) => setState(
-                          () => _estimatedTotal =
-                              int.tryParse(v) ?? _estimatedTotal,
-                        ),
-                      ),
-                    ),
                     Text(
-                      'Est. total\n₱$_estimatedTotal',
-                      textAlign: TextAlign.right,
+                      'Your saved stops',
                       style: TextStyle(
                         color: const Color(0xFF6E8178),
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => _showItineraryReceipt(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: colors.forest,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.receipt_long_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            SizedBox(width: 6),
+                            Text(
+                              'View Itinerary',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 6),
-
-              // ─── Budget Filter (spec 3.2) ──────────────────────────────
-              // Distinct from the curated-route budget tracker above: this
-              // one actually filters "All tourist sites" below to only
-              // locations whose adult entrance fee is ≤ the entered amount.
               const SizedBox(height: 18),
-              Text(
-                'FILTER BY BUDGET',
-                style: TextStyle(
-                  color: const Color(0xFF6E8178),
-                  fontSize: 12,
-                  letterSpacing: 0.5,
-                ),
-              ),
-              const SizedBox(height: 11),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: colors.card,
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: colors.line),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.payments_outlined,
-                      size: 18,
-                      color: colors.forest,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: TextField(
-                        controller: _budgetFilterController,
-                        keyboardType: TextInputType.number,
-                        style: TextStyle(fontSize: 14, color: colors.ink),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          hintText: '₱ Max entrance fee per site…',
-                          hintStyle: TextStyle(
-                            fontSize: 13,
-                            color: colors.muted,
-                          ),
-                        ),
-                        onChanged: (v) => setState(
-                          () => _maxBudgetFilter = v.trim().isEmpty
-                              ? null
-                              : int.tryParse(v.trim()),
-                        ),
-                      ),
-                    ),
-                    if (_maxBudgetFilter != null)
-                      GestureDetector(
-                        onTap: () => setState(() {
-                          _budgetFilterController.clear();
-                          _maxBudgetFilter = null;
-                        }),
-                        child: Icon(
-                          Icons.close_rounded,
-                          size: 18,
-                          color: colors.muted,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              if (_maxBudgetFilter != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8, left: 4),
-                  child: Text(
-                    'Showing sites with entrance fees of ₱$_maxBudgetFilter or less (free sites always included).',
-                    style: TextStyle(fontSize: 11, color: colors.muted),
-                  ),
-                ),
 
               // ─── All Tourist Sites ─────────────────────────────────────
-              const SizedBox(height: 18),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.baseline,
@@ -441,7 +698,11 @@ class _PlansScreenState extends State<PlansScreen> {
                 )
               else
                 ...sites.map(
-                  (site) => _SiteListCard(colors: colors, site: site),
+                  (site) => _SiteListCard(
+                    colors: colors,
+                    site: site,
+                    scaledCost: _scaledSiteCost(site),
+                  ),
                 ),
             ],
           ),
@@ -456,16 +717,23 @@ class _PlansScreenState extends State<PlansScreen> {
 class _RouteCard extends StatelessWidget {
   final AppColors colors;
   final CuratedRoute route;
+  final ({double min, double max})? scaledCost;
   final VoidCallback onTap;
 
   const _RouteCard({
     required this.colors,
     required this.route,
+    required this.scaledCost,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final priceLabel = scaledCost == null
+        ? route.priceRange
+        : (scaledCost!.min == 0
+              ? 'Free–₱${scaledCost!.max.round()}'
+              : '₱${scaledCost!.min.round()}–₱${scaledCost!.max.round()}');
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -509,7 +777,7 @@ class _RouteCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  route.priceRange,
+                  priceLabel,
                   style: TextStyle(color: colors.accent, fontSize: 14),
                 ),
                 const SizedBox(height: 4),
@@ -534,8 +802,13 @@ class _RouteCard extends StatelessWidget {
 class _SiteListCard extends StatelessWidget {
   final AppColors colors;
   final LocationModel site;
+  final ({double min, double max}) scaledCost;
 
-  const _SiteListCard({required this.colors, required this.site});
+  const _SiteListCard({
+    required this.colors,
+    required this.site,
+    required this.scaledCost,
+  });
 
   ImageProvider _resolveImage() {
     return site.imageUrl.startsWith('http')
@@ -545,6 +818,9 @@ class _SiteListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final costLabel = scaledCost.min == scaledCost.max
+        ? '₱${scaledCost.min.round()}'
+        : '₱${scaledCost.min.round()}–₱${scaledCost.max.round()}';
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
@@ -626,9 +902,7 @@ class _SiteListCard extends StatelessWidget {
                 child: Align(
                   alignment: Alignment.bottomRight,
                   child: Text(
-                    site.ticketInfo.adultPrice == 0
-                        ? (site.ticketInfo.notes ?? 'Free')
-                        : site.ticketInfo.formattedAdult,
+                    costLabel,
                     textAlign: TextAlign.right,
                     style: const TextStyle(
                       color: Color(0xFFB3550E),
@@ -644,3 +918,51 @@ class _SiteListCard extends StatelessWidget {
     );
   }
 }
+
+// ─── View Saved Itineraries Button ──────────────────────────────────────────
+// Smaller companion to the "Build your own itinerary" CTA above — links
+// straight to the Itinerary Hub tab of "Your Hub" so saved itineraries
+// aren't only reachable via Settings → Saved Places.
+
+class _ViewSavedItinerariesButton extends StatelessWidget {
+  final AppColors colors;
+  final bool isDark;
+
+  const _ViewSavedItinerariesButton({
+    required this.colors,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => const FavoritesScreen(initialTab: 'Itineraries'),
+          ),
+        );
+      },
+      child: Container(
+        height: 38,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isDark ? colors.card : const Color(0xFFE1EEE5),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Text(
+          'View Saved Itineraries',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: isDark ? colors.ink : colors.forest,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// (The receipt dividers previously defined here now live in
+// `lib/widgets/receipt_dividers.dart` so the Home page's Transport &
+// Access option popup can reuse the exact same receipt treatment.)
