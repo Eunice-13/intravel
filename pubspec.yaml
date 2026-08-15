@@ -26,6 +26,10 @@ dependencies:
   provider: ^6.1.2
   shimmer: ^3.0.0
   shared_preferences: ^2.5.4
+  # Restored fallback path only (see lib/services/native_gemini_chat_service.dart)
+  # — the primary chat backend is Backboard.io, called via plain `http`
+  # (see lib/services/gemini_chat_service.dart). Pinned to the same
+  # version this app used pre-Backboard-migration.
   google_generative_ai: 0.4.7
 
 dev_dependencies:
@@ -49,11 +53,13 @@ flutter:
     - assets/intravel/assets/home/
     - assets/intravel/vendor/leaflet/
     - assets/intravel/vendor/leaflet/images/
-    # Bundled as a fallback so ORS_API_KEY and GEMINI_API_KEY load
+    # Bundled as a fallback so ORS_API_KEY and BACKBOARD_API_KEY load
     # automatically no matter how the app is launched (IDE Run button, hot
     # restart, a plain `flutter run` with no flags) — see
     # lib/services/routing_service.dart and
-    # lib/services/gemini_api_key_loader.dart, which both read this asset
+    # lib/services/gemini_api_key_loader.dart (which resolves
+    # BACKBOARD_API_KEY despite its filename — kept during the Gemini →
+    # Backboard migration to minimize diff), which both read this asset
     # when no --dart-define was supplied.
     #
     # env.json itself stays gitignored; only this path declaration is
