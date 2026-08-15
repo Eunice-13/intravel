@@ -41,13 +41,24 @@ void main() {
 
   group('accessibility resolution', () {
     test('resolves common phrasings to real types', () {
+      // Step-free vocabulary resolves to pwdSeniorPriority, not ramps —
+      // improvement-batch spec Section 5 folded ramps/elevators into that
+      // filter, so the chatbot must match the same set the UI toggle shows.
       expect(
         knowledge.resolveAccessibilityType('wheelchair'),
-        AccessibilityType.ramps,
+        AccessibilityType.pwdSeniorPriority,
       );
       expect(
         knowledge.resolveAccessibilityType('is there a ramp'),
-        AccessibilityType.ramps,
+        AccessibilityType.pwdSeniorPriority,
+      );
+      expect(
+        knowledge.resolveAccessibilityType('elevator'),
+        AccessibilityType.pwdSeniorPriority,
+      );
+      expect(
+        knowledge.resolveAccessibilityType('bumpy road'),
+        AccessibilityType.roughTerrain,
       );
       expect(
         knowledge.resolveAccessibilityType('braille'),
@@ -105,10 +116,7 @@ void main() {
     });
 
     test('omitted constraints do not filter', () {
-      expect(
-        knowledge.queryLocations().length,
-        knowledge.allLocations.length,
-      );
+      expect(knowledge.queryLocations().length, knowledge.allLocations.length);
     });
 
     test('discountedOnly narrows to genuine student discounts', () {
@@ -132,25 +140,19 @@ void main() {
       mentionsKnownCategory: false,
     );
 
-    test(
-      'an app-feature question that name-drops a metro landmark stays in '
-      'scope — "which gate is closest to the LRT?" is a gate question',
-      () {
-        expect(classify('which gate is closest to the lrt').inScope, isTrue);
-      },
-    );
+    test('an app-feature question that name-drops a metro landmark stays in '
+        'scope — "which gate is closest to the LRT?" is a gate question', () {
+      expect(classify('which gate is closest to the lrt').inScope, isTrue);
+    });
 
-    test(
-      'the spec-mandated Manila-wide decline still holds when the metro '
-      'landmark is the only signal',
-      () {
-        expect(
-          classify('how do i get to intramuros from the airport').inScope,
-          isFalse,
-        );
-        expect(classify('what is the best mall in makati').inScope, isFalse);
-      },
-    );
+    test('the spec-mandated Manila-wide decline still holds when the metro '
+        'landmark is the only signal', () {
+      expect(
+        classify('how do i get to intramuros from the airport').inScope,
+        isFalse,
+      );
+      expect(classify('what is the best mall in makati').inScope, isFalse);
+    });
 
     test('genuinely unrelated trivia is still declined', () {
       expect(classify('what is the capital of france').inScope, isFalse);
@@ -165,10 +167,7 @@ void main() {
       // Scope rule — Manila-wide is out.
       expect(kChatbotSystemInstruction.toLowerCase(), contains('airport'));
       // Confirmation guardrail.
-      expect(
-        kChatbotSystemInstruction.toLowerCase(),
-        contains('confirm'),
-      );
+      expect(kChatbotSystemInstruction.toLowerCase(), contains('confirm'));
       // Language handling.
       expect(kChatbotSystemInstruction, contains('Taglish'));
     });

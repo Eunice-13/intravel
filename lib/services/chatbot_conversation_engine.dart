@@ -472,9 +472,9 @@ class ChatbotConversationEngine {
       case AccessibilityType.restAreas:
         return 'rest areas / seating';
       case AccessibilityType.pwdSeniorPriority:
-        return 'PWD & senior priority assistance';
-      case AccessibilityType.audioDescribedDirections:
-        return 'audio-described directions';
+        return 'step-free PWD & senior access';
+      case AccessibilityType.roughTerrain:
+        return 'rough or uneven surfaces';
       case AccessibilityType.cafe:
         return 'cafe amenities (WiFi & sockets)';
     }

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/chat_message_model.dart';
 import 'chat_memory_service.dart';
+import 'chatbot_knowledge_base.dart';
 import 'chatbot_system_instruction.dart';
 import 'gemini_api_key_loader.dart';
 
@@ -211,12 +212,23 @@ class GeminiChatService {
   // "gemini-1.5-flash" (the originally-specified model) and every
   // "2.5"-generation model are retired for this API key/account as of
   // this writing — `generateContent` calls to them fail with "no longer
-  // available to new users." Live-checked against the real API:
-  // `gemini-flash-latest` is a Google-maintained rolling alias to
-  // whichever flash-tier model is currently active, so this stays
-  // correct as models are retired/replaced over time rather than
-  // needing another manual bump.
-  static const String _modelName = 'gemini-flash-latest';
+  // available to new users."
+  //
+  // Uses the *lite* rolling alias rather than `gemini-flash-latest`
+  // specifically because of free-tier quota. Live-checked against the real
+  // API: `gemini-flash-latest` currently resolves to `gemini-3.7-flash`,
+  // whose free allowance is only **20 requests per day per project**
+  // (quotaId `GenerateRequestsPerDayPerProjectPerModel-FreeTier`) — low
+  // enough that ordinary testing exhausts it in one sitting, after which
+  // every chat turn silently degrades to the offline engine.
+  // `gemini-flash-lite-latest` sits in a separate, far more generous quota
+  // bucket and answered 200 in the same moment the non-lite alias was
+  // returning 429 RESOURCE_EXHAUSTED. Both are Google-maintained rolling
+  // aliases, so this still tracks model retirements without manual bumps.
+  //
+  // If you move to a paid plan and want the stronger model, switching back
+  // to `gemini-flash-latest` is a one-line change.
+  static const String _modelName = 'gemini-flash-lite-latest';
 
   final GeminiApiKeyLoader _apiKeyLoader;
   final ChatMemoryService _chatMemoryService;
@@ -254,7 +266,13 @@ class GeminiChatService {
       );
     }
 
-    const systemInstructionText = kChatbotSystemInstruction;
+    // Behavioral contract first (persona, scope, grounding, action
+    // guardrails), then the app knowledge base that grounds *what* the app
+    // actually contains. Order matters: the rules should frame how the
+    // knowledge is used, and the knowledge base itself defers to the live
+    // dataset/tools for any specific figure.
+    const systemInstructionText =
+        '$kChatbotSystemInstruction\n\n$kChatbotKnowledgeBase';
 
     final model = GenerativeModel(
       model: _modelName,
@@ -315,19 +333,100 @@ class GeminiChatService {
       throw const GeminiChatException('Cannot send an empty message.');
     }
 
-    try {
+    return _send(() async {
       final chat = await _ensureChatSession();
-      final response = await chat.sendMessage(Content.text(message));
-      return _toResult(response);
-    } on GeminiChatException {
-      rethrow;
-    } catch (e) {
-      throw GeminiChatException(
-        'Failed to get a response from the Gemini API.',
-        cause: e,
-      );
-    }
+      return chat.sendMessage(Content.text(message));
+    });
   }
+
+  /// Runs [operation] with retry-on-transient-failure, and converts the
+  /// result (or final failure) for callers.
+  ///
+  /// The flash-tier models genuinely return `503 UNAVAILABLE / "currently
+  /// experiencing high demand"` intermittently — live-checked against the
+  /// real API, where the same request returned 503, 503, then 200 seconds
+  /// apart. Previously any such blip immediately degraded the assistant to
+  /// its offline engine for that turn, which made a purely temporary
+  /// capacity spike look like a broken integration. Retrying a couple of
+  /// times with backoff recovers the overwhelming majority of these.
+  ///
+  /// Non-transient failures (bad key, malformed request, quota exhausted)
+  /// are *not* retried — hammering them wastes the user's time and, for
+  /// quota, their money.
+  Future<GeminiChatResult> _send(
+    Future<GenerateContentResponse> Function() operation,
+  ) async {
+    Object? lastError;
+    for (var attempt = 0; attempt < _maxSendAttempts; attempt++) {
+      try {
+        return _toResult(await operation());
+      } on GeminiChatException {
+        rethrow;
+      } catch (e) {
+        lastError = e;
+        final isLast = attempt == _maxSendAttempts - 1;
+        if (isLast || !_isTransient(e)) break;
+        final backoff = _retryBackoff[attempt];
+        debugPrint(
+          '[GeminiChatService] Transient API failure on attempt '
+          '${attempt + 1}/$_maxSendAttempts — retrying in '
+          '${backoff.inMilliseconds}ms. Cause: $e',
+        );
+        await Future<void>.delayed(backoff);
+      }
+    }
+
+    // Carry the underlying cause into the message, not just the `cause`
+    // field: the chat sheet logs this string when it falls back to the
+    // offline engine, and a bare "Failed to get a response" gave no way to
+    // tell a capacity blip apart from a rejected key.
+    throw GeminiChatException(
+      'Failed to get a response from the Gemini API: $lastError',
+      cause: lastError,
+    );
+  }
+
+  static const int _maxSendAttempts = 3;
+
+  /// Backoff before retry N. Deliberately short — a user is watching a
+  /// typing indicator, so this must not feel like a hang.
+  static const List<Duration> _retryBackoff = [
+    Duration(milliseconds: 600),
+    Duration(milliseconds: 1500),
+  ];
+
+  /// Whether [error] looks like a temporary server-side condition worth
+  /// retrying, as opposed to a request/credential problem that will fail
+  /// identically every time.
+  static bool _isTransient(Object error) {
+    final text = error.toString().toLowerCase();
+
+    // Quota exhaustion is explicitly NOT transient, even though it arrives
+    // as HTTP 429 alongside genuine rate-limit blips. The free tier allows
+    // only 20 requests per day per model, so retrying a quota failure
+    // cannot succeed and actively burns the remaining allowance —
+    // three attempts per user message would spend 3/20 for nothing.
+    if (_isQuotaExhausted(text)) return false;
+
+    return text.contains('503') ||
+        text.contains('unavailable') ||
+        text.contains('high demand') ||
+        text.contains('overloaded') ||
+        text.contains('deadline') ||
+        text.contains('timeout') ||
+        text.contains('socketexception') ||
+        text.contains('connection closed') ||
+        text.contains('internal error') ||
+        text.contains('500');
+  }
+
+  /// Whether [lowercaseText] is a quota/billing exhaustion failure rather
+  /// than a momentary server-side condition.
+  static bool _isQuotaExhausted(String lowercaseText) =>
+      lowercaseText.contains('exceeded your current quota') ||
+      lowercaseText.contains('resource_exhausted') ||
+      lowercaseText.contains('quota exceeded') ||
+      lowercaseText.contains('billing details');
 
   /// Reports the results of one or more function calls the model
   /// previously requested (via a prior [sendMessage] or
@@ -351,23 +450,18 @@ class GeminiChatService {
       );
     }
 
-    try {
+    // Same retry/backoff treatment as [sendMessage]: a tool-call follow-up
+    // is mid-conversation, so losing it to a capacity blip would leave the
+    // user's confirmed action unacknowledged.
+    return _send(() async {
       final chat = await _ensureChatSession();
-      final response = await chat.sendMessage(
+      return chat.sendMessage(
         Content.functionResponses([
           for (final entry in results.entries)
             FunctionResponse(entry.key, entry.value),
         ]),
       );
-      return _toResult(response);
-    } on GeminiChatException {
-      rethrow;
-    } catch (e) {
-      throw GeminiChatException(
-        'Failed to get a response from the Gemini API.',
-        cause: e,
-      );
-    }
+    });
   }
 
   GeminiChatResult _toResult(GenerateContentResponse response) {

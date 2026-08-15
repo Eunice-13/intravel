@@ -136,6 +136,36 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
   /// confirmed requirement that this degradation is never silent.
   bool _isDegradedToOffline = false;
 
+  /// Why the last turn fell back, so the banner can be specific.
+  _OfflineReasonKind _offlineReasonKind = _OfflineReasonKind.unknown;
+
+  static _OfflineReasonKind _classifyFallback(String? reason) {
+    final text = (reason ?? '').toLowerCase();
+    if (text.contains('exceeded your current quota') ||
+        text.contains('resource_exhausted') ||
+        text.contains('quota exceeded') ||
+        text.contains('billing details')) {
+      return _OfflineReasonKind.quota;
+    }
+    if (text.contains('no gemini api key') ||
+        text.contains('api key not valid') ||
+        text.contains('api_key_invalid')) {
+      return _OfflineReasonKind.apiKey;
+    }
+    if (text.contains('503') ||
+        text.contains('unavailable') ||
+        text.contains('high demand') ||
+        text.contains('overloaded')) {
+      return _OfflineReasonKind.capacity;
+    }
+    if (text.contains('socketexception') ||
+        text.contains('timeout') ||
+        text.contains('failed host lookup')) {
+      return _OfflineReasonKind.network;
+    }
+    return _OfflineReasonKind.unknown;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -300,6 +330,13 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
         '[ChatbotChatSheet] Gemini unavailable — answered from the offline '
         'engine instead. Reason: $fallbackReason',
       );
+    }
+    // Classify the failure so the banner can say something actionable.
+    // A generic "check your connection or API key" actively misled during
+    // testing: the key and network were both fine and the real cause was
+    // the free tier's daily request cap.
+    if (mounted) {
+      setState(() => _offlineReasonKind = _classifyFallback(fallbackReason));
     }
 
     // A null replyText means a function call was handled by putting up
@@ -672,7 +709,8 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
               // Visible degraded-mode notice (see [_isDegradedToOffline]) —
               // the assistant must never quietly answer from the weaker
               // offline path while appearing to be fully working.
-              if (_isDegradedToOffline) _OfflineModeNotice(colors: colors),
+              if (_isDegradedToOffline)
+                _OfflineModeNotice(colors: colors, kind: _offlineReasonKind),
               Expanded(
                 child: FutureBuilder<void>(
                   future: _loadFuture,
@@ -976,8 +1014,32 @@ class _MessageArea extends StatelessWidget {
 /// notice in `osm_poi_map_screen.dart`) rather than a new visual language.
 class _OfflineModeNotice extends StatelessWidget {
   final AppColors colors;
+  final _OfflineReasonKind kind;
 
-  const _OfflineModeNotice({required this.colors});
+  const _OfflineModeNotice({required this.colors, required this.kind});
+
+  /// Cause-specific copy. The original single message listed every possible
+  /// cause at once ("check your connection or GEMINI_API_KEY"), which
+  /// actively misled during testing: both were fine and the real cause was
+  /// the free tier's 20-requests-per-day cap.
+  String get _message {
+    switch (kind) {
+      case _OfflineReasonKind.quota:
+        return 'Daily AI quota reached — still answering from app data. '
+            'Resets tomorrow, or upgrade the Gemini plan for more.';
+      case _OfflineReasonKind.apiKey:
+        return 'AI key missing or rejected — answering from app data only. '
+            'Check GEMINI_API_KEY in env.json.';
+      case _OfflineReasonKind.capacity:
+        return 'AI service is busy right now — answering from app data. '
+            'Try again in a moment.';
+      case _OfflineReasonKind.network:
+        return 'No connection to the AI service — answering from app data '
+            'only.';
+      case _OfflineReasonKind.unknown:
+        return 'Offline mode — answering from app data only.';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -986,14 +1048,17 @@ class _OfflineModeNotice extends StatelessWidget {
       color: const Color(0xFFFFF3E0),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
-        children: const [
-          Icon(Icons.cloud_off_rounded, size: 15, color: Color(0xFFB25E00)),
-          SizedBox(width: 8),
+        children: [
+          const Icon(
+            Icons.cloud_off_rounded,
+            size: 15,
+            color: Color(0xFFB25E00),
+          ),
+          const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Offline mode — answering from app data only. Check your '
-              'connection or GEMINI_API_KEY for smarter replies.',
-              style: TextStyle(fontSize: 11, color: Color(0xFF7A4200)),
+              _message,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF7A4200)),
             ),
           ),
         ],
@@ -1001,6 +1066,10 @@ class _OfflineModeNotice extends StatelessWidget {
     );
   }
 }
+
+/// Why the assistant fell back to its offline engine, so the notice above
+/// can be specific about the cause rather than guessing.
+enum _OfflineReasonKind { quota, apiKey, capacity, network, unknown }
 
 /// Loading indicator shown as an assistant-side bubble while waiting on
 /// a live [GeminiChatService] reply — same left-aligned, neutral-card

@@ -64,13 +64,13 @@ void main() {
     rootBundle.evict('docs/intramuros-app-spec-chatbot.md');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMessageHandler('flutter/assets', (message) async {
-      final key = utf8.decode(message!.buffer.asUint8List());
-      if (key == 'docs/intramuros-app-spec-chatbot.md') {
-        final bytes = utf8.encode('# Test spec\nJust a stub for tests.');
-        return ByteData.view(Uint8List.fromList(bytes).buffer);
-      }
-      return null;
-    });
+          final key = utf8.decode(message!.buffer.asUint8List());
+          if (key == 'docs/intramuros-app-spec-chatbot.md') {
+            final bytes = utf8.encode('# Test spec\nJust a stub for tests.');
+            return ByteData.view(Uint8List.fromList(bytes).buffer);
+          }
+          return null;
+        });
   });
 
   tearDown(() {
@@ -127,28 +127,24 @@ void main() {
     },
   );
 
-  test(
-    'starts with an empty history when ChatMemoryService has no prior '
-    'turns, sending only the new message',
-    () async {
-      final fakeClient = _RecordingFakeClient();
-      final service = GeminiChatService(
-        apiKeyLoader: GeminiApiKeyLoader(compileTimeApiKey: 'test-key-123'),
-        chatMemoryService: ChatMemoryService.instance,
-        httpClient: fakeClient,
-      );
+  test('starts with an empty history when ChatMemoryService has no prior '
+      'turns, sending only the new message', () async {
+    final fakeClient = _RecordingFakeClient();
+    final service = GeminiChatService(
+      apiKeyLoader: GeminiApiKeyLoader(compileTimeApiKey: 'test-key-123'),
+      chatMemoryService: ChatMemoryService.instance,
+      httpClient: fakeClient,
+    );
 
-      await service.sendMessage('Is Intramuros walkable?');
+    await service.sendMessage('Is Intramuros walkable?');
 
-      final contents =
-          fakeClient.capturedRequestBodies.first['contents'] as List;
-      expect(contents, hasLength(1));
-      expect(contents[0], {
-        'role': 'user',
-        'parts': [
-          {'text': 'Is Intramuros walkable?'},
-        ],
-      });
-    },
-  );
+    final contents = fakeClient.capturedRequestBodies.first['contents'] as List;
+    expect(contents, hasLength(1));
+    expect(contents[0], {
+      'role': 'user',
+      'parts': [
+        {'text': 'Is Intramuros walkable?'},
+      ],
+    });
+  });
 }

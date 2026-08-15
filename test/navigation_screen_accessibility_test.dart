@@ -12,25 +12,45 @@ void main() {
     AccessibilitySettingsService.instance.toggle(true);
   });
 
-  testWidgets('shows all 6 accessibility mode buttons in a 2-column grid when '
-      'Accessibility Support is enabled', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: NavigationScreen()));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'shows the consolidated accessibility mode buttons in a 2-column grid '
+    'when Accessibility Support is enabled',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: NavigationScreen()));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Vegetarian'), findsWidgets);
-    expect(find.text('Braille / Voice'), findsWidgets);
-    expect(find.text('Ramps & Elevators'), findsWidgets);
-    expect(find.text('Rest Areas & Seating Nearby'), findsOneWidget);
-    expect(find.text('PWD & Senior Priority Assistance'), findsOneWidget);
-    expect(find.text('Audio-Described Directions'), findsWidgets);
+      expect(find.text('Vegetarian'), findsWidgets);
+      expect(find.text('Cafe (WiFi & Sockets)'), findsWidgets);
+      expect(find.text('Braille / Voice'), findsWidgets);
+      expect(find.text('Rest Areas & Seating Nearby'), findsOneWidget);
+      // Renamed and broadened: step-free access folded in here. Appears
+      // twice — once as the grid toggle, once as its Live Updates entry.
+      expect(find.text('PWD & Senior Access'), findsWidgets);
+      // Replaces the removed audio-described mode.
+      expect(find.text('Rough / Bumpy Road'), findsWidgets);
 
-    // Reflowed into a 2-column grid rather than a vertical list.
-    expect(find.byType(GridView), findsOneWidget);
-    final grid = tester.widget<GridView>(find.byType(GridView));
-    final delegate =
-        grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
-    expect(delegate.crossAxisCount, 2);
-  });
+      // Reflowed into a 2-column grid rather than a vertical list.
+      expect(find.byType(GridView), findsOneWidget);
+      final grid = tester.widget<GridView>(find.byType(GridView));
+      final delegate =
+          grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount;
+      expect(delegate.crossAxisCount, 2);
+    },
+  );
+
+  testWidgets(
+    'the removed standalone options are gone from the grid — Ramps/Elevators '
+    'folded into PWD & Senior Access, Audio-Described replaced by terrain '
+    '(improvement-batch spec Section 5)',
+    (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: NavigationScreen()));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ramps & Elevators'), findsNothing);
+      expect(find.text('Audio-Described Directions'), findsNothing);
+      expect(find.text('PWD & Senior Priority Assistance'), findsNothing);
+    },
+  );
 
   testWidgets(
     'hides the Live Updates / Accessibility Modes panel entirely when '

@@ -10,6 +10,7 @@ import '../services/location_rating_service.dart';
 import '../services/chatbot_page_context_service.dart';
 import '../widgets/location_photo.dart';
 import '../widgets/nav_flow_launcher.dart';
+import 'itinerary_create_screen.dart';
 import 'review_form_screen.dart';
 
 /// Location details screen. Layout (hero + facts + history + highlights +
@@ -80,6 +81,20 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
   double get _displayedRating {
     final summary = computeLocationRatingSummary(widget.location);
     return summary.hasRatings ? summary.average : widget.location.rating;
+  }
+
+  /// "Directions" (improvement-batch spec Section 7). Deliberately does not
+  /// launch inline turn-by-turn — that's what the separate Navigate CTA on
+  /// this screen is for, via [NavFlowLauncher]. Instead it opens the
+  /// itinerary builder with this location already included as a stop, so the
+  /// user plans a trip around it rather than getting a bare point-to-point
+  /// route.
+  void _openItineraryOptions() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ItineraryCreateScreen(seedLocation: widget.location),
+      ),
+    );
   }
 
   Future<void> _openReviewForm(
@@ -414,7 +429,7 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
                           colors: colors,
                           icon: Icons.directions_outlined,
                           label: 'Directions',
-                          onTap: () {},
+                          onTap: _openItineraryOptions,
                         ),
                       ),
                     ],
