@@ -8,6 +8,7 @@ import '../services/saved_places_service.dart';
 import '../services/review_service.dart';
 import '../services/location_rating_service.dart';
 import '../services/chatbot_page_context_service.dart';
+import '../services/itinerary_service.dart';
 import '../widgets/location_photo.dart';
 import '../widgets/nav_flow_launcher.dart';
 import 'itinerary_create_screen.dart';
@@ -83,17 +84,253 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
     return summary.hasRatings ? summary.average : widget.location.rating;
   }
 
-  /// "Directions" (improvement-batch spec Section 7). Deliberately does not
-  /// launch inline turn-by-turn — that's what the separate Navigate CTA on
-  /// this screen is for, via [NavFlowLauncher]. Instead it opens the
-  /// itinerary builder with this location already included as a stop, so the
-  /// user plans a trip around it rather than getting a bare point-to-point
-  /// route.
+  /// Opens a bottom sheet letting the user choose between creating a new
+  /// itinerary with this location or adding it to an existing saved one.
   void _openItineraryOptions() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ItineraryCreateScreen(seedLocation: widget.location),
+    final colors = AppColors.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (sheetContext) {
+        final itineraries = ItineraryService.instance.itineraries;
+        final hasExisting = itineraries.isNotEmpty;
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.muted.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Add to Itinerary',
+                  style: TextStyle(
+                    fontFamily: AppTheme.serifFont,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: colors.ink,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.location.name,
+                  style: TextStyle(fontSize: 13, color: colors.muted),
+                ),
+                const SizedBox(height: 20),
+                // ─── Create New Itinerary ─────────────────────────────
+                _ItineraryOptionTile(
+                  colors: colors,
+                  icon: Icons.add_circle_outline_rounded,
+                  title: 'Create New Itinerary',
+                  subtitle: 'Start a new trip with this location',
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ItineraryCreateScreen(
+                          seedLocation: widget.location,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+                // ─── Add to Saved Itinerary ───────────────────────────
+                _ItineraryOptionTile(
+                  colors: colors,
+                  icon: Icons.playlist_add_rounded,
+                  title: 'Add to Saved Itinerary',
+                  subtitle: hasExisting
+                      ? '${itineraries.length} saved itinerar${itineraries.length == 1 ? 'y' : 'ies'}'
+                      : 'No saved itineraries yet',
+                  enabled: hasExisting,
+                  onTap: hasExisting
+                      ? () {
+                          Navigator.of(sheetContext).pop();
+                          _showSavedItineraryPicker();
+                        }
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Shows a picker listing all saved itineraries so the user can choose
+  /// which one to append this location to.
+  void _showSavedItineraryPicker() {
+    final colors = AppColors.of(context);
+    final itineraries = ItineraryService.instance.itineraries;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: colors.card,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: DraggableScrollableSheet(
+            expand: false,
+            initialChildSize: 0.5,
+            minChildSize: 0.3,
+            maxChildSize: 0.75,
+            builder: (context, scrollController) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: colors.muted.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      'Select Itinerary',
+                      style: TextStyle(
+                        fontFamily: AppTheme.serifFont,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: colors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Choose where to add "${widget.location.name}"',
+                      style: TextStyle(fontSize: 12, color: colors.muted),
+                    ),
+                    const SizedBox(height: 16),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        itemCount: itineraries.length,
+                        itemBuilder: (context, index) {
+                          final itinerary = itineraries[index];
+                          final stopCount = itinerary.locationIds.length;
+                          final alreadyAdded = itinerary.locationIds.contains(
+                            widget.location.id,
+                          );
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            decoration: BoxDecoration(
+                              color: alreadyAdded
+                                  ? colors.forest.withValues(alpha: 0.06)
+                                  : colors.paper,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: alreadyAdded
+                                    ? colors.forest.withValues(alpha: 0.3)
+                                    : colors.line,
+                              ),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 4,
+                              ),
+                              title: Text(
+                                itinerary.name,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: colors.ink,
+                                ),
+                              ),
+                              subtitle: Text(
+                                alreadyAdded
+                                    ? 'Already includes this location'
+                                    : '$stopCount stop${stopCount == 1 ? '' : 's'}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: alreadyAdded
+                                      ? colors.forest
+                                      : colors.muted,
+                                ),
+                              ),
+                              trailing: alreadyAdded
+                                  ? Icon(
+                                      Icons.check_circle_rounded,
+                                      color: colors.forest,
+                                      size: 22,
+                                    )
+                                  : Icon(
+                                      Icons.add_circle_outline_rounded,
+                                      color: colors.forest,
+                                      size: 22,
+                                    ),
+                              onTap: alreadyAdded
+                                  ? () {
+                                      Navigator.of(sheetContext).pop();
+                                      ScaffoldMessenger.of(
+                                        this.context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            '"${widget.location.name}" is already in "${itinerary.name}"',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  : () async {
+                                      final navigator = Navigator.of(
+                                        sheetContext,
+                                      );
+                                      final messenger = ScaffoldMessenger.of(
+                                        this.context,
+                                      );
+                                      await ItineraryService.instance
+                                          .addLocation(
+                                        itinerary.id,
+                                        widget.location.id,
+                                      );
+                                      if (!mounted) return;
+                                      navigator.pop();
+                                      messenger.showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Added "${widget.location.name}" to "${itinerary.name}"',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    },
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
@@ -428,7 +665,7 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
                         child: _ActionButton(
                           colors: colors,
                           icon: Icons.directions_outlined,
-                          label: 'Directions',
+                          label: 'Itinerary',
                           onTap: _openItineraryOptions,
                         ),
                       ),
@@ -761,22 +998,39 @@ class _AudioGuideCardState extends State<_AudioGuideCard> {
   bool _isPlaying = false;
 
   @override
+  void initState() {
+    super.initState();
+    // Listen for TTS completion so we reset the button when audio finishes
+    // naturally (not user-paused).
+    widget.ttsService.onComplete = () {
+      if (mounted) setState(() => _isPlaying = false);
+    };
+  }
+
+  @override
+  void dispose() {
+    widget.ttsService.onComplete = null;
+    super.dispose();
+  }
+
+  Future<void> _toggle() async {
+    if (_isPlaying) {
+      await widget.ttsService.pause();
+      if (mounted) setState(() => _isPlaying = false);
+    } else {
+      setState(() => _isPlaying = true);
+      widget.ttsService.speakLocationInfo(
+        widget.locationName,
+        widget.locationDescription,
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final colors = widget.colors;
     return GestureDetector(
-      onTap: () async {
-        if (_isPlaying) {
-          await widget.ttsService.stop();
-          setState(() => _isPlaying = false);
-        } else {
-          setState(() => _isPlaying = true);
-          await widget.ttsService.speakLocationInfo(
-            widget.locationName,
-            widget.locationDescription,
-          );
-          setState(() => _isPlaying = false);
-        }
-      },
+      onTap: _toggle,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -794,7 +1048,7 @@ class _AudioGuideCardState extends State<_AudioGuideCard> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                _isPlaying ? Icons.stop_rounded : Icons.volume_up_rounded,
+                _isPlaying ? Icons.pause_rounded : Icons.volume_up_rounded,
                 color: colors.forest,
                 size: 22,
               ),
@@ -821,7 +1075,7 @@ class _AudioGuideCardState extends State<_AudioGuideCard> {
               ),
             ),
             Icon(
-              _isPlaying ? Icons.pause_circle : Icons.play_circle_filled,
+              _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
               color: colors.forest,
               size: 32,
             ),
@@ -992,6 +1246,84 @@ class _ReviewCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Itinerary Option Tile ──────────────────────────────────────────────────────
+
+class _ItineraryOptionTile extends StatelessWidget {
+  final AppColors colors;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  const _ItineraryOptionTile({
+    required this.colors,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.enabled = true,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final opacity = enabled ? 1.0 : 0.45;
+    return Opacity(
+      opacity: opacity,
+      child: GestureDetector(
+        onTap: enabled ? onTap : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: colors.paper,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: colors.line),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: colors.forest.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: colors.forest, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: colors.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(fontSize: 12, color: colors.muted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colors.muted,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

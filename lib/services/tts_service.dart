@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter_tts/flutter_tts.dart';
 
 class TtsService {
@@ -9,6 +10,9 @@ class TtsService {
   bool _isInitialized = false;
   bool _isSpeaking = false;
   String _currentLanguage = 'en-US';
+
+  /// Optional callback invoked when speech finishes naturally (not paused/stopped).
+  VoidCallback? onComplete;
 
   bool get isSpeaking => _isSpeaking;
   String get currentLanguage => _currentLanguage;
@@ -27,6 +31,7 @@ class TtsService {
 
     _flutterTts.setCompletionHandler(() {
       _isSpeaking = false;
+      onComplete?.call();
     });
 
     _flutterTts.setCancelHandler(() {
@@ -52,6 +57,11 @@ class TtsService {
   Future<void> stop() async {
     _isSpeaking = false;
     await _flutterTts.stop();
+  }
+
+  Future<void> pause() async {
+    _isSpeaking = false;
+    await _flutterTts.pause();
   }
 
   Future<void> setLanguage(String language) async {
