@@ -85,10 +85,7 @@ class _ItineraryCreateScreenState extends State<ItineraryCreateScreen> {
                         ),
                       ),
                       const SizedBox(width: 20),
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: 90,
-                        ), // Adjust this value to push text right
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
