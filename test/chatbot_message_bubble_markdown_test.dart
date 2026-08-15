@@ -27,11 +27,10 @@ void main() {
       text: text,
     );
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: ChatbotChatSheet()),
-      ),
+      const MaterialApp(home: Scaffold(body: ChatbotChatSheet())),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
   testWidgets(
@@ -67,6 +66,7 @@ void main() {
           s.children?.forEach(visit);
         }
       }
+
       visit(span);
       expect(foundBoldSpan, isTrue);
     },
@@ -125,11 +125,8 @@ void main() {
     },
   );
 
-  testWidgets(
-    'plain text with no markdown renders unchanged',
-    (tester) async {
-      await pumpSheetWithMessage(tester, 'Hey! How can I help?');
-      expect(find.text('Hey! How can I help?'), findsOneWidget);
-    },
-  );
+  testWidgets('plain text with no markdown renders unchanged', (tester) async {
+    await pumpSheetWithMessage(tester, 'Hey! How can I help?');
+    expect(find.text('Hey! How can I help?'), findsOneWidget);
+  });
 }

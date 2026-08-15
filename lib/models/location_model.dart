@@ -297,24 +297,47 @@ class AccessibilityFeature {
 }
 
 enum AccessibilityType {
+  /// Ramp access at this location.
+  ///
+  /// Still a valid *data tag* — it describes a real physical feature worth
+  /// recording per site — but no longer a standalone filter in the
+  /// Accessibility Modes grid (improvement-batch spec Section 5). Filtering
+  /// by [pwdSeniorPriority] now surfaces anything tagged [ramps] or
+  /// [elevators], since step-free access is exactly what that audience is
+  /// filtering for.
   ramps,
+
+  /// Elevator access at this location. Same treatment as [ramps]: retained
+  /// as data, folded into [pwdSeniorPriority] for filtering.
   elevators,
+
   brailleVoice,
   vegetarian,
   restroom,
   parking,
 
-  /// Rest areas / seating available nearby (addendum spec Section 4.2,
-  /// new mode #4 of 6).
+  /// Rest areas / seating available nearby (addendum spec Section 4.2).
   restAreas,
 
-  /// Priority assistance for persons with disabilities and senior
-  /// citizens (addendum spec Section 4.2, new mode #5 of 6).
+  /// Step-free access plus priority assistance for persons with
+  /// disabilities and senior visitors.
+  ///
+  /// Since the improvement-batch spec Section 5 folded Ramps and Elevators
+  /// into this option, it now covers both the *assistance* it originally
+  /// meant and *step-free navigability* — a location tagged [ramps] or
+  /// [elevators] matches this filter even without its own
+  /// `pwdSeniorPriority` tag.
   pwdSeniorPriority,
 
-  /// Turn-by-turn directions narrated with extra descriptive detail for
-  /// low-vision users (addendum spec Section 4.2, new mode #6 of 6).
-  audioDescribedDirections,
+  /// The approach or surface underfoot is rough, uneven, or cobbled
+  /// (improvement-batch spec Section 5, replacing the removed
+  /// audio-described-directions mode).
+  ///
+  /// Intramuros is largely historic cobblestone, so this is a genuine
+  /// mobility concern rather than a cosmetic detail: surfacing it lets
+  /// wheelchair users, visitors with strollers, and anyone unsteady on
+  /// their feet anticipate or avoid those stretches.
+  roughTerrain,
 
   /// Cafe filter highlighting nearby cafes with workspace amenities —
   /// WiFi and power sockets (addendum spec 3 Section 1.1).

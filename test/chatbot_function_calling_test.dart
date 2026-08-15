@@ -62,12 +62,11 @@ void main() {
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(
-          body: ChatbotChatSheet(geminiService: geminiService),
-        ),
+        home: Scaffold(body: ChatbotChatSheet(geminiService: geminiService)),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
   testWidgets(
@@ -101,7 +100,8 @@ void main() {
         'how much does fort santiago cost',
       );
       await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(fake.sendMessageCallCount, 1);
       expect(fake.functionResultCalls, hasLength(1));
@@ -111,69 +111,62 @@ void main() {
       expect(reportedArgs!['found'], true);
       expect(reportedArgs['locationName'], 'Fort Santiago');
 
-      expect(
-        find.textContaining('Fort Santiago costs'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Fort Santiago costs'), findsOneWidget);
     },
   );
 
-  testWidgets(
-    'addToItinerary function call: surfaces a Yes/No confirmation '
-    'instead of mutating the itinerary immediately',
-    (tester) async {
-      final fake = _ScriptedGeminiChatService();
-      fake.enqueue(
-        const GeminiChatResult(
-          functionCalls: [
-            GeminiFunctionCallRequest(
-              name: kAddToItineraryFunctionName,
-              args: {'locationName': 'Fort Santiago'},
-            ),
-          ],
-        ),
-      );
+  testWidgets('addToItinerary function call: surfaces a Yes/No confirmation '
+      'instead of mutating the itinerary immediately', (tester) async {
+    final fake = _ScriptedGeminiChatService();
+    fake.enqueue(
+      const GeminiChatResult(
+        functionCalls: [
+          GeminiFunctionCallRequest(
+            name: kAddToItineraryFunctionName,
+            args: {'locationName': 'Fort Santiago'},
+          ),
+        ],
+      ),
+    );
 
-      await pumpSheet(tester, fake);
-      await tester.enterText(
-        find.byType(TextField),
-        'i want to add fort santiago as a stop',
-      );
-      await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-      await tester.pumpAndSettle();
+    await pumpSheet(tester, fake);
+    await tester.enterText(
+      find.byType(TextField),
+      'i want to add fort santiago as a stop',
+    );
+    await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-      // No itinerary mutation yet, and no function-result reported back
-      // yet either — the model's tool call is left pending until the
-      // user explicitly confirms, per the mandatory confirm-before-acting
-      // guardrail (spec Section 4).
-      expect(fake.functionResultCalls, isEmpty);
-      expect(ItineraryService.instance.itineraries, isEmpty);
-      expect(find.textContaining('Add Fort Santiago'), findsOneWidget);
-      expect(find.text('Yes'), findsOneWidget);
-      expect(find.text('No'), findsOneWidget);
+    // No itinerary mutation yet, and no function-result reported back
+    // yet either — the model's tool call is left pending until the
+    // user explicitly confirms, per the mandatory confirm-before-acting
+    // guardrail (spec Section 4).
+    expect(fake.functionResultCalls, isEmpty);
+    expect(ItineraryService.instance.itineraries, isEmpty);
+    expect(find.textContaining('Add Fort Santiago'), findsOneWidget);
+    expect(find.text('Yes'), findsOneWidget);
+    expect(find.text('No'), findsOneWidget);
 
-      // Confirming now should execute the real ItineraryService call and
-      // report the outcome back to Gemini for its closing reply.
-      fake.enqueue(
-        const GeminiChatResult(
-          text: 'Done — added Fort Santiago to your itinerary!',
-        ),
-      );
-      await tester.tap(find.text('Yes'));
-      await tester.pumpAndSettle();
+    // Confirming now should execute the real ItineraryService call and
+    // report the outcome back to Gemini for its closing reply.
+    fake.enqueue(
+      const GeminiChatResult(
+        text: 'Done — added Fort Santiago to your itinerary!',
+      ),
+    );
+    await tester.tap(find.text('Yes'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-      expect(fake.functionResultCalls, hasLength(1));
-      expect(
-        fake.functionResultCalls.first[kAddToItineraryFunctionName]?['status'],
-        'success',
-      );
-      expect(ItineraryService.instance.itineraries, hasLength(1));
-      expect(
-        find.textContaining('added Fort Santiago'),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(fake.functionResultCalls, hasLength(1));
+    expect(
+      fake.functionResultCalls.first[kAddToItineraryFunctionName]?['status'],
+      'success',
+    );
+    expect(ItineraryService.instance.itineraries, hasLength(1));
+    expect(find.textContaining('added Fort Santiago'), findsOneWidget);
+  });
 
   testWidgets(
     'createItinerary function call: surfaces a Yes/No confirmation and '
@@ -197,7 +190,8 @@ void main() {
         "I'd like to begin planning a brand new trip called Manila Weekend",
       );
       await tester.tap(find.byIcon(Icons.arrow_upward_rounded));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(fake.functionResultCalls, isEmpty);
       expect(ItineraryService.instance.itineraries, isEmpty);
@@ -214,7 +208,8 @@ void main() {
         ),
       );
       await tester.tap(find.text('Yes'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(fake.functionResultCalls, hasLength(1));
       expect(

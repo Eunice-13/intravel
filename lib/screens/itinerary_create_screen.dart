@@ -9,7 +9,19 @@ import '../models/location_model.dart';
 /// saved, the itinerary appears in the Itinerary Hub (Your Hub → Itineraries
 /// tab, reached from Settings → Saved Places).
 class ItineraryCreateScreen extends StatefulWidget {
-  const ItineraryCreateScreen({super.key});
+  /// Optional location to open the builder with already included as a stop
+  /// (improvement-batch spec Section 7): the Location Details "Directions"
+  /// button routes here rather than launching inline turn-by-turn, and the
+  /// originating location arrives pre-selected.
+  ///
+  /// Deliberately just a seed for the normal selection state rather than a
+  /// separate "locked" stop — Section 7.4 requires the pre-included stop to
+  /// behave exactly like a manually added one (editable, removable, and
+  /// reorderable once saved), which falls out for free if it's an ordinary
+  /// member of [_selectedLocationIds].
+  final LocationModel? seedLocation;
+
+  const ItineraryCreateScreen({super.key, this.seedLocation});
 
   @override
   State<ItineraryCreateScreen> createState() => _ItineraryCreateScreenState();
@@ -21,6 +33,18 @@ class _ItineraryCreateScreenState extends State<ItineraryCreateScreen> {
   String _searchTerm = '';
 
   @override
+  void initState() {
+    super.initState();
+    final seed = widget.seedLocation;
+    if (seed == null) return;
+    _selectedLocationIds.add(seed.id);
+    // Pre-filled so arriving from "Directions" isn't an immediate dead end
+    // at the "Give your itinerary a name first" guard in [_save]. Still a
+    // normal editable field — the user can rename it before saving.
+    _nameController.text = 'Trip to ${seed.name}';
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     super.dispose();
@@ -28,9 +52,21 @@ class _ItineraryCreateScreenState extends State<ItineraryCreateScreen> {
 
   List<LocationModel> get _filteredSites {
     final all = LocationService().getAllLocations();
-    if (_searchTerm.trim().isEmpty) return all;
     final term = _searchTerm.trim().toLowerCase();
-    return all.where((s) => s.name.toLowerCase().contains(term)).toList();
+    final matches = term.isEmpty
+        ? List<LocationModel>.of(all)
+        : all.where((s) => s.name.toLowerCase().contains(term)).toList();
+
+    // Float the seeded stop to the top of the list. Without this the one
+    // location the user just came from could sit dozens of rows down, so
+    // "it's already added" would be invisible — the selection count would
+    // read 1 with nothing on screen to explain why.
+    final seedId = widget.seedLocation?.id;
+    if (seedId != null) {
+      final index = matches.indexWhere((s) => s.id == seedId);
+      if (index > 0) matches.insert(0, matches.removeAt(index));
+    }
+    return matches;
   }
 
   Future<void> _save() async {
@@ -85,10 +121,7 @@ class _ItineraryCreateScreenState extends State<ItineraryCreateScreen> {
                         ),
                       ),
                       const SizedBox(width: 20),
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          left: 90,
-                        ), // Adjust this value to push text right
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [

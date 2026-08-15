@@ -15,41 +15,41 @@ void main() {
 
   Future<void> pumpSheet(WidgetTester tester) async {
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: ChatbotChatSheet()),
-      ),
+      const MaterialApp(home: Scaffold(body: ChatbotChatSheet())),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
   }
 
-  testWidgets(
-    'tapping the clear-history icon shows a confirmation dialog with '
-    'Proceed and Cancel, and Cancel leaves the history untouched',
-    (tester) async {
-      await ChatMemoryService.instance.addMessage(
-        role: ChatMessageRole.user,
-        text: 'hello there',
-      );
+  testWidgets('tapping the clear-history icon shows a confirmation dialog with '
+      'Proceed and Cancel, and Cancel leaves the history untouched', (
+    tester,
+  ) async {
+    await ChatMemoryService.instance.addMessage(
+      role: ChatMessageRole.user,
+      text: 'hello there',
+    );
 
-      await pumpSheet(tester);
-      expect(find.text('hello there'), findsOneWidget);
+    await pumpSheet(tester);
+    expect(find.text('hello there'), findsOneWidget);
 
-      await tester.tap(find.byIcon(Icons.delete_outline_rounded));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.delete_outline_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('Clear chat history?'), findsOneWidget);
-      expect(find.text('Proceed'), findsOneWidget);
-      expect(find.text('Cancel'), findsOneWidget);
+    expect(find.text('Clear chat history?'), findsOneWidget);
+    expect(find.text('Proceed'), findsOneWidget);
+    expect(find.text('Cancel'), findsOneWidget);
 
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
 
-      // Dialog dismissed, message still there — Cancel did nothing.
-      expect(find.text('Clear chat history?'), findsNothing);
-      expect(ChatMemoryService.instance.messages, hasLength(1));
-      expect(find.text('hello there'), findsOneWidget);
-    },
-  );
+    // Dialog dismissed, message still there — Cancel did nothing.
+    expect(find.text('Clear chat history?'), findsNothing);
+    expect(ChatMemoryService.instance.messages, hasLength(1));
+    expect(find.text('hello there'), findsOneWidget);
+  });
 
   testWidgets(
     'tapping Proceed in the confirmation dialog clears the chat history',
@@ -63,10 +63,12 @@ void main() {
       expect(find.text('hello there'), findsOneWidget);
 
       await tester.tap(find.byIcon(Icons.delete_outline_rounded));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       await tester.tap(find.text('Proceed'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(ChatMemoryService.instance.messages, isEmpty);
       expect(find.text('hello there'), findsNothing);

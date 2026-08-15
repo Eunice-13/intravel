@@ -74,9 +74,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      Padding(
-                        // Adjust this value (e.g., 120-200) depending on how far right you want it
-                        padding: const EdgeInsets.only(left: 160),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [

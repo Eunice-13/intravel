@@ -26,9 +26,7 @@ void main() {
       'when no compile-time key is set', () async {
     // Simulate the bundled env.json asset without touching the real
     // gitignored file on disk.
-    TestDefaultBinaryMessengerBinding
-        .instance
-        .defaultBinaryMessenger
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMessageHandler('flutter/assets', (message) async {
           final key = utf8.decode(message!.buffer.asUint8List());
           if (key == 'env.json') {
@@ -43,25 +41,19 @@ void main() {
     expect(key, 'asset-key-123');
     expect(loader.hasCompileTimeKey, isFalse);
 
-    TestDefaultBinaryMessengerBinding
-        .instance
-        .defaultBinaryMessenger
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMessageHandler('flutter/assets', null);
   });
 
   test('returns empty string when neither source has a key', () async {
-    TestDefaultBinaryMessengerBinding
-        .instance
-        .defaultBinaryMessenger
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMessageHandler('flutter/assets', (message) async => null);
 
     final loader = GeminiApiKeyLoader(compileTimeApiKey: '');
     final key = await loader.resolveApiKey();
     expect(key, '');
 
-    TestDefaultBinaryMessengerBinding
-        .instance
-        .defaultBinaryMessenger
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMessageHandler('flutter/assets', null);
   });
 }

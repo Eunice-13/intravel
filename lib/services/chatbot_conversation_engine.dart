@@ -200,17 +200,19 @@ class ChatbotConversationEngine {
     // a page context happens to be set, since it's asking about the
     // dataset broadly rather than "the place I'm currently looking at".
     final isGeneralDatasetQuery = _looksLikeDiscountQuestion(normalized);
-    final hasAnchor = !isGeneralDatasetQuery &&
+    final hasAnchor =
+        !isGeneralDatasetQuery &&
         currentPageContext != null &&
         currentPageContext.trim().isNotEmpty;
     final isFollowUp =
         !isGeneralDatasetQuery &&
         (_looksLikeVagueReference(normalized) || hasAnchor);
 
-    final location = mentionedLocation ??
+    final location =
+        mentionedLocation ??
         (isFollowUp
             ? (_resolveFromPageContext(currentPageContext) ??
-                _mostRecentlyDiscussedLocation())
+                  _mostRecentlyDiscussedLocation())
             : null);
 
     if (location != null && _looksLikeCostQuestion(normalized)) {
@@ -242,7 +244,20 @@ class ChatbotConversationEngine {
     // user to ask again for the actual numbers. The user already asked
     // for exactly this detail — making them ask a second time per place
     // is the rigidity this reply is meant to fix.
-    if (_looksLikeCostQuestion(normalized) || _looksLikeDiscountQuestion(normalized)) {
+    // Structured/combined filters (budget range + category +
+    // accessibility) — tried before the single-purpose fallbacks below so
+    // a question like "cheap fortifications under 300 with ramps" is
+    // answered as one grounded query rather than being reduced to
+    // whichever single keyword happened to match first. This is also what
+    // keeps the offline path useful when the live model is unavailable.
+    final structured = _tryStructuredQuery(
+      normalized,
+      mentionedCategory: mentionedCategory,
+    );
+    if (structured != null) return structured;
+
+    if (_looksLikeCostQuestion(normalized) ||
+        _looksLikeDiscountQuestion(normalized)) {
       final discounted = _knowledge.allLocations
           .where((l) => l.ticketInfo.studentPrice < l.ticketInfo.adultPrice)
           .toList();
@@ -263,9 +278,7 @@ class ChatbotConversationEngine {
               '${ticket.currency}${ticket.seniorPrice!.toInt()} (senior/PWD)',
             );
           }
-          lines.add(
-            '${i + 1}. **${place.name}** — ${priceParts.join(', ')}.',
-          );
+          lines.add('${i + 1}. **${place.name}** — ${priceParts.join(', ')}.');
         }
         return ChatbotEngineResult(
           replyText: lines.join('\n'),
@@ -319,6 +332,154 @@ class ChatbotConversationEngine {
     );
   }
 
+  /// Answers a question carrying one or more *structured* constraints —
+  /// budget range, category, accessibility need, open-now — by composing
+  /// them into a single [ChatbotKnowledgeService.queryLocations] call.
+  ///
+  /// Returns `null` when the message carries no structured constraint at
+  /// all, so the caller falls through to its other handlers. Returns an
+  /// honest "nothing matches" answer rather than silently relaxing a
+  /// filter when the combination genuinely has no results.
+  ChatbotEngineResult? _tryStructuredQuery(
+    String normalized, {
+    required String? mentionedCategory,
+  }) {
+    final budget = _parseBudget(normalized);
+    final accessibility = _knowledge.resolveAccessibilityType(normalized);
+    final wantsOpenNow =
+        normalized.contains('open now') ||
+        normalized.contains('open right now');
+
+    // A bare category question is already handled well further down; only
+    // take over when there's a real constraint beyond it.
+    final hasConstraint =
+        budget != null || accessibility != null || wantsOpenNow;
+    if (!hasConstraint) return null;
+
+    // A discount/pricing question has its own dedicated handler below that
+    // reports real adult/student/senior figures per place. Only take it
+    // over here when the user actually pinned a numeric budget, since
+    // that's a genuine filter this composable query answers better.
+    if (_looksLikeDiscountQuestion(normalized) && budget == null) {
+      return null;
+    }
+
+    final matches = _knowledge.queryLocations(
+      category: mentionedCategory,
+      budgetMin: budget?.min,
+      budgetMax: budget?.max,
+      accessibility: accessibility,
+      openNow: wantsOpenNow ? true : null,
+    );
+
+    final criteria = <String>[
+      if (mentionedCategory != null) mentionedCategory.toLowerCase(),
+      if (budget != null) _describeBudget(budget),
+      if (accessibility != null) 'with ${_accessibilityLabel(accessibility)}',
+      if (wantsOpenNow) 'open right now',
+    ];
+    final criteriaText = criteria.isEmpty ? '' : ' ${criteria.join(', ')}';
+
+    if (matches.isEmpty) {
+      return ChatbotEngineResult(
+        replyText:
+            "I couldn't find anything$criteriaText in the app's data. Try "
+            'widening the budget or dropping one of the filters?',
+        outcome: ChatbotEngineOutcome.answered,
+      );
+    }
+
+    final shortlist = matches.take(6).toList();
+    final lines = <String>['Here\'s what matches$criteriaText:'];
+    for (var i = 0; i < shortlist.length; i++) {
+      final place = shortlist[i];
+      lines.add(
+        '${i + 1}. **${place.name}** — ${place.category}, '
+        '${place.budgetRange.formatted}.',
+      );
+    }
+    if (matches.length > shortlist.length) {
+      lines.add('…and ${matches.length - shortlist.length} more.');
+    }
+    return ChatbotEngineResult(
+      replyText: lines.join('\n'),
+      outcome: ChatbotEngineOutcome.answered,
+    );
+  }
+
+  /// Extracts a peso budget constraint from free text, covering the
+  /// phrasings the acceptance criteria call out ("₱200–₱500") plus the
+  /// common one-sided forms.
+  ({double? min, double? max})? _parseBudget(String text) {
+    final t = text.replaceAll(',', '');
+
+    final range = RegExp(
+      r'(?:php|₱|p)?\s*(\d{2,6})\s*(?:-|–|—|to|and)\s*(?:php|₱|p)?\s*(\d{2,6})',
+    ).firstMatch(t);
+    if (range != null) {
+      final a = double.tryParse(range.group(1)!);
+      final b = double.tryParse(range.group(2)!);
+      if (a != null && b != null) {
+        return (min: a < b ? a : b, max: a < b ? b : a);
+      }
+    }
+
+    final under = RegExp(
+      r'(?:under|below|less than|at most|max|cheaper than|within|up to)\s*'
+      r'(?:php|₱|p)?\s*(\d{2,6})',
+    ).firstMatch(t);
+    if (under != null) {
+      final v = double.tryParse(under.group(1)!);
+      if (v != null) return (min: null, max: v);
+    }
+
+    final over = RegExp(
+      r'(?:above|over|more than|at least|minimum)\s*(?:php|₱|p)?\s*(\d{2,6})',
+    ).firstMatch(t);
+    if (over != null) {
+      final v = double.tryParse(over.group(1)!);
+      if (v != null) return (min: v, max: null);
+    }
+
+    return null;
+  }
+
+  String _describeBudget(({double? min, double? max}) budget) {
+    final min = budget.min;
+    final max = budget.max;
+    if (min != null && max != null) {
+      return 'between ₱${min.toInt()} and ₱${max.toInt()}';
+    }
+    if (max != null) return 'under ₱${max.toInt()}';
+    if (min != null) return 'over ₱${min.toInt()}';
+    return '';
+  }
+
+  String _accessibilityLabel(AccessibilityType type) {
+    switch (type) {
+      case AccessibilityType.ramps:
+        return 'ramps / step-free access';
+      case AccessibilityType.elevators:
+        return 'elevators';
+      case AccessibilityType.brailleVoice:
+        return 'braille or voice guidance';
+      case AccessibilityType.vegetarian:
+        return 'vegetarian options';
+      case AccessibilityType.restroom:
+        return 'restrooms';
+      case AccessibilityType.parking:
+        return 'parking';
+      case AccessibilityType.restAreas:
+        return 'rest areas / seating';
+      case AccessibilityType.pwdSeniorPriority:
+        return 'step-free PWD & senior access';
+      case AccessibilityType.roughTerrain:
+        return 'rough or uneven surfaces';
+      case AccessibilityType.cafe:
+        return 'cafe amenities (WiFi & sockets)';
+    }
+  }
+
   bool _looksLikeCostQuestion(String text) =>
       text.contains('cost') ||
       text.contains('price') ||
@@ -351,9 +512,22 @@ class ChatbotConversationEngine {
   /// about whichever location happened to be discussed last.
   bool _looksLikeVagueReference(String text) {
     const vagueMarkers = [
-      'tell me more', 'more about', 'more info', 'this place', 'that place',
-      'is it', 'does it', 'it cost', 'it open', 'about it', 'about this',
-      'about that', 'over there', 'is there', 'ganda', 'maganda',
+      'tell me more',
+      'more about',
+      'more info',
+      'this place',
+      'that place',
+      'is it',
+      'does it',
+      'it cost',
+      'it open',
+      'about it',
+      'about this',
+      'about that',
+      'over there',
+      'is there',
+      'ganda',
+      'maganda',
       'sulit ba',
     ];
     return vagueMarkers.any(text.contains);
@@ -375,10 +549,7 @@ class ChatbotConversationEngine {
     }
   }
 
-  String _describeHours(
-    LocationModel location,
-    ChatMessageLanguage language,
-  ) {
+  String _describeHours(LocationModel location, ChatMessageLanguage language) {
     final hours = location.operatingHours;
     return '${location.name} is open ${hours.formattedWeekday} on '
         'weekdays and ${hours.formattedWeekend} on weekends. Right now '
@@ -446,7 +617,8 @@ class ChatbotConversationEngine {
     required String? currentPageContext,
     required LocationModel? mentionedLocation,
   }) {
-    final location = mentionedLocation ??
+    final location =
+        mentionedLocation ??
         _knowledge.findLocationByName(intent.targetText ?? '') ??
         _resolveFromPageContext(currentPageContext) ??
         _mostRecentlyDiscussedLocation();
@@ -512,7 +684,8 @@ class ChatbotConversationEngine {
     required String? currentPageContext,
     required LocationModel? mentionedLocation,
   }) {
-    final location = mentionedLocation ??
+    final location =
+        mentionedLocation ??
         _knowledge.findLocationByName(intent.targetText ?? '') ??
         _resolveFromPageContext(currentPageContext) ??
         _mostRecentlyDiscussedLocation();
@@ -575,10 +748,7 @@ class ChatbotConversationEngine {
     final verb = parts.length > 1 ? parts[1].trim() : 'on';
     final label = feature.isEmpty ? 'that setting' : feature;
     return ChatbotEngineResult(
-      replyText: _phraseBank.confirmAction(
-        language,
-        'Turn $verb $label?',
-      ),
+      replyText: _phraseBank.confirmAction(language, 'Turn $verb $label?'),
       pendingAction: ChatbotPendingAction(
         type: ChatbotActionType.changeSetting,
         targetId: 'toggle:$label:$verb',
@@ -611,7 +781,8 @@ class ChatbotConversationEngine {
       );
     }
 
-    final category = _knowledge.resolveCategory(raw) ??
+    final category =
+        _knowledge.resolveCategory(raw) ??
         (raw.toLowerCase() == 'only' ? null : raw);
     if (category == null || category.trim().isEmpty) {
       return ChatbotEngineResult(
@@ -620,10 +791,7 @@ class ChatbotConversationEngine {
       );
     }
     return ChatbotEngineResult(
-      replyText: _phraseBank.confirmAction(
-        language,
-        'Show only $category?',
-      ),
+      replyText: _phraseBank.confirmAction(language, 'Show only $category?'),
       pendingAction: ChatbotPendingAction(
         type: ChatbotActionType.applyFilter,
         targetId: 'category:$category',

@@ -1,0 +1,22 @@
+# Copy this file to android/local.properties (same folder) and fill in
+# real values. android/local.properties is gitignored (see
+# android/.gitignore's `/local.properties` entry) — the real file must
+# never be committed.
+
+# Path to your Android SDK installation. Android Studio / the Flutter
+# tooling usually writes this automatically on first sync — only set it
+# by hand if it's missing.
+# sdk.dir=C:\\Users\\yourname\\AppData\\Local\\Android\\sdk
+
+# Path to your local Flutter SDK checkout. Required by
+# android/settings.gradle.kts — the Gradle build fails without it.
+flutter.sdk=C:\\path\\to\\flutter
+
+# Google Maps SDK for Android API key, used by google_maps_flutter
+# throughout the app's map screens (navigation_screen.dart,
+# itinerary_navigation_overview_screen.dart, osm_poi_map_screen.dart).
+# Injected into AndroidManifest.xml at build time via the
+# manifestPlaceholders wiring in android/app/build.gradle.kts. Get a real
+# key from the Google Cloud Console (Maps SDK for Android enabled,
+# billing attached) or from your team lead.
+MAPS_API_KEY=your_key_here

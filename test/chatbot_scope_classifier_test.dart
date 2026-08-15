@@ -47,9 +47,7 @@ void main() {
 
   group('explicit out-of-scope guardrails (spec Section 2) still hold', () {
     test('Manila-wide questions are still declined', () {
-      final result = classify(
-        'how do i get to intramuros from the airport',
-      );
+      final result = classify('how do i get to intramuros from the airport');
       expect(result.inScope, isFalse);
       expect(result.reason, ChatbotScopeReason.outOfScopeManilaWide);
     });
@@ -60,10 +58,7 @@ void main() {
         isFalse,
       );
       expect(classify('whats the latest nba score').inScope, isFalse);
-      expect(
-        classify('can you write me a poem about love').inScope,
-        isFalse,
-      );
+      expect(classify('can you write me a poem about love').inScope, isFalse);
     });
 
     test('a known-entity mention is always in-scope regardless of wording', () {

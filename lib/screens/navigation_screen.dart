@@ -96,16 +96,21 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// changes.
   final ValueNotifier<double?> _headingNotifier = ValueNotifier(null);
 
-  // Accessibility toggles — mirrors the branch's three default-active modes.
+  // Accessibility toggles.
   bool _vegetarianMode = true;
   bool _brailleVoiceMode = true;
-  bool _rampsMode = true;
 
-  // 3 additional confirmed modes (addendum spec Section 4.2) — default to
-  // active, matching the existing three's default-on behavior.
   bool _restAreasMode = true;
+
+  /// Step-free access + priority assistance. Improvement-batch spec
+  /// Section 5 folded the former standalone "Ramps & Elevators" toggle into
+  /// this one, so it now also governs whether ramp/elevator-tagged
+  /// locations surface — see [_isModeActive].
   bool _pwdSeniorPriorityMode = true;
-  bool _audioDescribedDirectionsMode = true;
+
+  /// Rough/uneven surface warning — replaces the removed
+  /// "Audio-Described Directions" mode (improvement-batch spec Section 5).
+  bool _roughTerrainMode = true;
 
   // Cafe (WiFi & Sockets) filter toggle (addendum spec 3 Section 1.1) —
   // defaults to active like the other modes above.
@@ -122,6 +127,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// a stable reference (a line redrawn from the live position every
   /// update would never register as "off route").
   LatLng? _routeStartPosition;
+
+  /// Which gate [_routeStartPosition] was anchored to, so a later gate
+  /// change can be detected and the route re-anchored. `null` when the
+  /// start came from live GPS rather than a gate.
+  String? _routeStartGateId;
 
   /// Cached waypoints of the current route line (either the walking-path
   /// graph's hop chain, or a direct two-point line as a fallback),
@@ -235,6 +245,39 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// so silently turning into a follow camera) on later rebuilds.
   bool _hasFitBirdsEyeBounds = false;
 
+  // ─── Free panning / follow mode (improvement-batch spec Section 4) ────────
+
+  /// Zoom the re-center button returns to outside turn-by-turn mode.
+  /// Turn-by-turn has its own, much tighter [_followCameraZoom].
+  static const double _defaultRecenterZoom = 16;
+
+  /// How long after the last finger lifts a camera move is still credited
+  /// to that gesture. Needed because gesture-driven camera motion doesn't
+  /// always start while a pointer is still down — a double-tap zoom and
+  /// the inertial fling that follows a drag both begin *after* the pointer
+  /// is released. Without this window those would be misread as
+  /// programmatic moves and would not suspend follow mode.
+  static const Duration _gestureCameraGrace = Duration(milliseconds: 600);
+
+  /// True once the user has manually panned/zoomed the map, which
+  /// suspends automatic camera following until they tap re-center
+  /// (improvement-batch spec Section 4.1/4.2/4.5). Without this the
+  /// turn-by-turn follow camera re-centered on every GPS fix, making the
+  /// map impossible to drag away from.
+  bool _userHasPannedMap = false;
+
+  /// Number of pointers currently down on the map surface. Used to tell a
+  /// user gesture apart from a programmatic camera update: the plugin's
+  /// `onCameraMoveStarted` fires for both and carries no reason code, so
+  /// touch state is the only reliable discriminator. Tracked via a
+  /// translucent [Listener] that observes pointers without consuming them,
+  /// leaving the map's own gesture handling untouched.
+  int _pointersOnMap = 0;
+
+  /// When the last pointer event on the map surface occurred — see
+  /// [_gestureCameraGrace] for why a trailing window is needed.
+  DateTime? _lastMapPointerEvent;
+
   // ─── Browse-mode state (search + persistent multi-select filters) ────────
   final TextEditingController _searchController = TextEditingController();
   String _searchTerm = '';
@@ -264,6 +307,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _navTarget = widget.navTarget;
     _routingService = widget.routingService ?? OpenRouteServiceRouting();
     LiveTrackingActivationService.instance.addListener(_onActivationChanged);
+    GateSelectionService.instance.addListener(_onGateChanged);
     _initializeLocation();
     _listenToCompass();
     _rebuildLiveUpdates();
@@ -376,6 +420,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// mode, or before the camera has an initial position to rotate around.
   void _maybeRotateFollowCamera(double heading) {
     if (!_isTurnByTurn || _mapController == null) return;
+    // Rotating the camera would also re-center it on the user, so the same
+    // "user is panning" suspension that applies to position following has
+    // to apply here too — otherwise the next compass tick would drag the
+    // map back (improvement-batch spec Section 4.5).
+    if (_userHasPannedMap) return;
     final userPoint = _effectiveUserLatLng;
     if (userPoint == null) return;
 
@@ -407,9 +456,15 @@ class _NavigationScreenState extends State<NavigationScreen> {
   /// effective position, keeping the current heading-derived bearing and
   /// tight zoom — called on every GPS update while in turn-by-turn mode
   /// so the camera continuously tracks the user, unlike bird's-eye's
-  /// one-time bounds fit. No-ops entirely outside turn-by-turn mode.
+  /// one-time bounds fit. No-ops entirely outside turn-by-turn mode, and
+  /// while the user has panned away from follow mode.
   void _followUserIfTurnByTurn(LatLng point) {
     if (!_isTurnByTurn || _mapController == null) return;
+    // Improvement-batch spec Section 4.5: panning away during
+    // turn-by-turn must stick, so the user can inspect the map ahead
+    // without the next GPS fix yanking the camera back. Follow resumes
+    // only when they tap re-center ([_recenterOnUser]).
+    if (_userHasPannedMap) return;
     _mapController!.moveCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
@@ -431,6 +486,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
     if (_hasFitBirdsEyeBounds || _mapController == null || _navTarget == null) {
       return;
     }
+    // Deliberately checked before [_hasFitBirdsEyeBounds] is set, so if the
+    // user panned before a position ever resolved the fit isn't lost — it
+    // just waits until they tap re-center.
+    if (_userHasPannedMap) return;
     final start = _routeStartPosition ?? _effectiveUserLatLng;
     if (start == null) return;
     _hasFitBirdsEyeBounds = true;
@@ -461,6 +520,99 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _followUserIfTurnByTurn(point);
   }
 
+  // ─── Free panning / follow mode (improvement-batch spec Section 4) ─────────
+
+  /// Whether camera motion starting right now should be credited to a user
+  /// gesture rather than to one of this screen's own camera commands.
+  ///
+  /// `onCameraMoveStarted` in `google_maps_flutter` is a bare `VoidCallback`
+  /// — unlike the native SDKs it does not report *why* the camera moved, so
+  /// it fires identically for a finger drag and for the follow camera's own
+  /// `moveCamera`. Gating on live touch state (plus a short trailing window
+  /// for flings and double-tap zooms) is what separates the two. A
+  /// timestamp-only "was a programmatic move issued recently?" guard was
+  /// rejected: turn-by-turn issues one roughly every GPS fix, so that
+  /// window would be open almost permanently and real pans would never
+  /// register.
+  bool get _cameraMoveIsUserGesture {
+    if (_pointersOnMap > 0) return true;
+    final last = _lastMapPointerEvent;
+    if (last == null) return false;
+    return DateTime.now().difference(last) < _gestureCameraGrace;
+  }
+
+  void _onMapPointerDown() {
+    _pointersOnMap++;
+    _lastMapPointerEvent = DateTime.now();
+  }
+
+  void _onMapPointerUp() {
+    if (_pointersOnMap > 0) _pointersOnMap--;
+    _lastMapPointerEvent = DateTime.now();
+  }
+
+  /// Suspends follow mode the first time the user drags or pinches the map.
+  void _onCameraMoveStarted() {
+    if (!_cameraMoveIsUserGesture) return;
+    if (_userHasPannedMap) return;
+    setState(() => _userHasPannedMap = true);
+  }
+
+  /// Wraps a map in the pointer observer that feeds
+  /// [_cameraMoveIsUserGesture]. [HitTestBehavior.translucent] means the
+  /// pointers are observed and then still delivered to the map underneath,
+  /// so pan/zoom gestures behave exactly as they did before.
+  Widget _withMapGestureObserver(Widget map) {
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => _onMapPointerDown(),
+      onPointerUp: (_) => _onMapPointerUp(),
+      onPointerCancel: (_) => _onMapPointerUp(),
+      child: map,
+    );
+  }
+
+  /// Whether the re-center control should be on screen: only once the user
+  /// has actually panned away (improvement-batch spec Section 4.3), so it
+  /// doesn't sit there permanently as dead chrome while the camera is
+  /// already following.
+  bool get _showRecenterButton => _userHasPannedMap;
+
+  /// Pure camera re-center: smoothly animates back to the user's current
+  /// location at the default zoom and resumes follow mode
+  /// (improvement-batch spec Section 4.4/4.6).
+  ///
+  /// Kept separate from [_recenterOnRoute], which is the "return to route"
+  /// action — it additionally re-anchors [_routeStartPosition] and resets
+  /// the step/waypoint cursors. Recovering the camera after a look-around
+  /// must not silently recalculate the route.
+  void _recenterOnUser() {
+    final point =
+        _effectiveUserLatLng ??
+        _navTarget?.coordinates ??
+        _fallbackCameraTarget;
+    setState(() => _userHasPannedMap = false);
+    if (_isTurnByTurn) {
+      _mapController?.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: point,
+            zoom: _followCameraZoom,
+            tilt: _followCameraTilt,
+            bearing: _followCameraBearing,
+          ),
+        ),
+      );
+    } else {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(point, _defaultRecenterZoom),
+      );
+    }
+    // Bird's-eye's one-time fit is intentionally not re-armed here: the
+    // user asked to be centered on themselves, not re-framed on the whole
+    // route.
+  }
+
   /// Resolves the "current position" every marker/route/distance
   /// calculation should treat as the user's location (addendum spec
   /// Section 2.2/2.3): while a starting gate is selected and live
@@ -486,8 +638,85 @@ class _NavigationScreenState extends State<NavigationScreen> {
   void _setRouteStartIfNeeded() {
     if (_navTarget != null && _routeStartPosition == null) {
       final point = _effectiveUserLatLng;
-      if (point != null) _routeStartPosition = point;
+      if (point != null) {
+        _routeStartPosition = point;
+        // Record which gate this anchor came from (null once live GPS is
+        // driving position) so [_onGateChanged] can tell a real gate
+        // switch apart from an unrelated notification.
+        _routeStartGateId = LiveTrackingActivationService.instance.isActive
+            ? null
+            : GateSelectionService.instance.selectedGateId;
+      }
     }
+  }
+
+  /// Re-anchors this screen when the user picks a different starting gate,
+  /// so the change propagates to the user marker, the route line, the
+  /// camera, and every distance/ETA derived from them.
+  ///
+  /// Critically, the gate only defines where the user *starts*. Once live
+  /// GPS has activated — meaning they're actually here and moving — their
+  /// real position is the source of truth, and a gate change must not drag
+  /// the route start backwards to a gate they've already left. So the
+  /// re-anchor only happens while live tracking is still inactive; after
+  /// that this just rebuilds so any gate-derived labels stay accurate.
+  void _onGateChanged() {
+    if (!mounted) return;
+
+    if (LiveTrackingActivationService.instance.isActive) {
+      setState(() {});
+      return;
+    }
+
+    final gateId = GateSelectionService.instance.selectedGateId;
+    if (gateId == _routeStartGateId) {
+      setState(() {});
+      return;
+    }
+
+    setState(() {
+      _routeStartGateId = gateId;
+      // Drop the old anchor and everything derived from it, so nothing
+      // keeps rendering against the previous gate.
+      _routeStartPosition = null;
+      _cachedRouteLine = null;
+      _cachedRouteLineStart = null;
+      _realRouteWaypoints = null;
+      _realRouteFetchedForStart = null;
+      _realRouteSteps = const [];
+      _routeWaypoints = null;
+      _currentStepIndex = 0;
+      _nextWaypointIndex = 1;
+      _isOffRoute = false;
+      _realRouteFailureReason = null;
+      // Allow bird's-eye to re-fit its bounds to the new start/destination
+      // pair instead of staying framed on the old gate.
+      _hasFitBirdsEyeBounds = false;
+      // Picking a gate is an explicit "look here" request, so it also ends
+      // any prior pan-away and puts the camera back under app control.
+      _userHasPannedMap = false;
+    });
+
+    _setRouteStartIfNeeded();
+    _moveCameraForGateChange();
+  }
+
+  /// Points the camera at the newly picked gate.
+  ///
+  /// Browse mode has no follow camera and its `initialCameraPosition`
+  /// doesn't re-apply on rebuild, so without this the user marker would
+  /// move to the new gate while the viewport stayed framed on the old one.
+  /// [_applyModeSpecificCamera] deliberately no-ops in browse mode (it runs
+  /// on every GPS update and must not fight the user's panning), but an
+  /// explicit gate pick is a direct request to look somewhere.
+  void _moveCameraForGateChange() {
+    if (!_isBrowseMode) {
+      _applyModeSpecificCamera();
+      return;
+    }
+    final point = _effectiveUserLatLng;
+    if (point == null) return;
+    _mapController?.animateCamera(CameraUpdate.newLatLngZoom(point, 16));
   }
 
   @override
@@ -496,6 +725,7 @@ class _NavigationScreenState extends State<NavigationScreen> {
     _compassSubscription?.cancel();
     _headingNotifier.dispose();
     LiveTrackingActivationService.instance.removeListener(_onActivationChanged);
+    GateSelectionService.instance.removeListener(_onGateChanged);
     _mapController?.dispose();
     _searchController.dispose();
     super.dispose();
@@ -553,16 +783,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
         ),
       );
     }
-    if (_rampsMode) {
-      _liveUpdates.add(
-        const _LiveUpdate(
-          title: 'Ramps & Elevators',
-          subtitle: 'Located near Main Entrance',
-          type: AccessibilityType.ramps,
-          isActive: true,
-        ),
-      );
-    }
     if (_restAreasMode) {
       _liveUpdates.add(
         const _LiveUpdate(
@@ -576,19 +796,22 @@ class _NavigationScreenState extends State<NavigationScreen> {
     if (_pwdSeniorPriorityMode) {
       _liveUpdates.add(
         const _LiveUpdate(
-          title: 'PWD & Senior Priority',
-          subtitle: 'Priority assistance available on request',
+          title: 'PWD & Senior Access',
+          // Mentions step-free explicitly now that ramps/elevators are
+          // folded into this mode, so the user can tell it covers physical
+          // access and not just staff assistance.
+          subtitle: 'Step-free route · priority assistance on request',
           type: AccessibilityType.pwdSeniorPriority,
           isActive: true,
         ),
       );
     }
-    if (_audioDescribedDirectionsMode) {
+    if (_roughTerrainMode) {
       _liveUpdates.add(
         const _LiveUpdate(
-          title: 'Audio-Described Directions',
-          subtitle: 'Narrated turn-by-turn active',
-          type: AccessibilityType.audioDescribedDirections,
+          title: 'Rough / Bumpy Road',
+          subtitle: 'Cobblestone stretch ahead — uneven surface',
+          type: AccessibilityType.roughTerrain,
           isActive: true,
         ),
       );
@@ -599,19 +822,24 @@ class _NavigationScreenState extends State<NavigationScreen> {
     switch (type) {
       case AccessibilityType.vegetarian:
         return _vegetarianMode;
+      // The fold: ramp- and elevator-tagged locations are surfaced by the
+      // PWD & Senior Access filter rather than a toggle of their own
+      // (improvement-batch spec Section 5). Their data tags are still
+      // meaningful — they just no longer have a separate switch.
       case AccessibilityType.ramps:
-        return _rampsMode;
+      case AccessibilityType.elevators:
+      case AccessibilityType.pwdSeniorPriority:
+        return _pwdSeniorPriorityMode;
       case AccessibilityType.brailleVoice:
         return _brailleVoiceMode;
       case AccessibilityType.restAreas:
         return _restAreasMode;
-      case AccessibilityType.pwdSeniorPriority:
-        return _pwdSeniorPriorityMode;
-      case AccessibilityType.audioDescribedDirections:
-        return _audioDescribedDirectionsMode;
+      case AccessibilityType.roughTerrain:
+        return _roughTerrainMode;
       case AccessibilityType.cafe:
         return _cafeMode;
-      default:
+      case AccessibilityType.restroom:
+      case AccessibilityType.parking:
         return true;
     }
   }
@@ -696,6 +924,10 @@ class _NavigationScreenState extends State<NavigationScreen> {
       _focusedSearchResult = site;
       _searchController.text = site.name;
       _searchTerm = '';
+      // Jumping to a search hit deliberately moves the camera off the user,
+      // so surface the re-center control to get back (and, in turn-by-turn,
+      // keep the follow camera from immediately undoing the jump).
+      _userHasPannedMap = true;
     });
     _mapController?.animateCamera(
       CameraUpdate.newLatLngZoom(site.coordinates, 17),
@@ -722,11 +954,33 @@ class _NavigationScreenState extends State<NavigationScreen> {
     });
   }
 
+  /// Which raw [LocationModel.category] values each filter chip covers.
+  ///
+  /// Needed because the chip set ([_navFilterCategories]) is the four
+  /// categories `docs/intramuros-app-spec-locations.md` mandates, while the
+  /// underlying dataset also uses `Museums` and `Churches` as category
+  /// values. Matching chip label against `site.category` directly — which is
+  /// what this used to do — therefore left every museum and church
+  /// unreachable from the Navigation filters: nine locations with pins that
+  /// no chip could ever turn on. The spec's grouping ("museums are grouped
+  /// under the Landmarks filter category, not a separate Museums filter") is
+  /// applied here instead.
+  static const Map<String, List<String>> _navFilterCategoryGroups = {
+    'Fortifications': ['Fortifications'],
+    'Landmarks': ['Landmarks', 'Museums', 'Churches'],
+    'Schools': ['Schools'],
+    'Parks': ['Parks'],
+  };
+
   List<LocationModel> get _filteredCategoryLocations {
     if (_activeCategoryFilters.isEmpty) return const [];
+    final wanted = <String>{
+      for (final chip in _activeCategoryFilters)
+        ...(_navFilterCategoryGroups[chip] ?? [chip]),
+    };
     return LocationService()
         .getAllLocations()
-        .where((site) => _activeCategoryFilters.contains(site.category))
+        .where((site) => wanted.contains(site.category))
         .toList();
   }
 
@@ -904,16 +1158,12 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   children: [
                     _AmenityChip(
                       icon: location.hasWifi ? Icons.wifi : Icons.wifi_off,
-                      label: location.hasWifi
-                          ? 'WiFi available'
-                          : 'No WiFi',
+                      label: location.hasWifi ? 'WiFi available' : 'No WiFi',
                       available: location.hasWifi,
                     ),
                     const SizedBox(width: 8),
                     _AmenityChip(
-                      icon: location.hasSockets
-                          ? Icons.power
-                          : Icons.power_off,
+                      icon: location.hasSockets ? Icons.power : Icons.power_off,
                       label: location.hasSockets
                           ? 'Sockets available'
                           : 'No sockets',
@@ -1472,29 +1722,57 @@ class _NavigationScreenState extends State<NavigationScreen> {
           flex: 2,
           child: Stack(
             children: [
-              GoogleMap(
-                mapType: _mapType,
-                initialCameraPosition: CameraPosition(
-                  target: _fallbackCameraTarget,
-                  zoom: 16,
+              _withMapGestureObserver(
+                GoogleMap(
+                  mapType: _mapType,
+                  initialCameraPosition: CameraPosition(
+                    target: _fallbackCameraTarget,
+                    zoom: _defaultRecenterZoom,
+                  ),
+                  markers: _buildMarkers(),
+                  // Suppressed until live tracking activates: before that
+                  // the app deliberately treats the selected gate as the
+                  // user's position, and the platform's own blue dot would
+                  // sit at their real GPS location instead — showing two
+                  // contradicting "you are here" indicators at once (e.g.
+                  // the gate pin in Intramuros plus a blue dot across Metro
+                  // Manila). Once live GPS takes over, both agree, so the
+                  // native dot is turned back on.
+                  myLocationEnabled:
+                      LiveTrackingActivationService.instance.isActive,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  onCameraMoveStarted: _onCameraMoveStarted,
+                  onMapCreated: (c) => _mapController = c,
                 ),
-                markers: _buildMarkers(),
-                myLocationEnabled: true,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                onMapCreated: (c) => _mapController = c,
               ),
+              // Bottom-right floating control stack. The re-center button
+              // sits above the satellite toggle per improvement-batch spec
+              // Section 4.3 ("above other floating controls"), and only
+              // appears once the user has panned away.
               Positioned(
                 bottom: 14,
                 right: 20,
-                child: _MapLayerToggleButton(
-                  isSatelliteView: _mapType == MapType.satellite,
-                  onToggle: () => setState(() {
-                    _mapType = _mapType == MapType.satellite
-                        ? MapType.normal
-                        : MapType.satellite;
-                  }),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    if (_showRecenterButton) ...[
+                      _MapRecenterButton(
+                        colors: colors,
+                        onTap: _recenterOnUser,
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    _MapLayerToggleButton(
+                      isSatelliteView: _mapType == MapType.satellite,
+                      onToggle: () => setState(() {
+                        _mapType = _mapType == MapType.satellite
+                            ? MapType.normal
+                            : MapType.satellite;
+                      }),
+                    ),
+                  ],
                 ),
               ),
               Positioned(
@@ -1556,39 +1834,76 @@ class _NavigationScreenState extends State<NavigationScreen> {
           flex: 2,
           child: Stack(
             children: [
-              GoogleMap(
-                mapType: _mapType,
-                // Initial framing is a placeholder only — whichever of
-                // [_fitBirdsEyeBoundsOnce] / the turn-by-turn following
-                // camera applies takes over as soon as a position is
-                // available (from `onMapCreated` below, or from
-                // `_initializeLocation` if GPS resolves first).
-                initialCameraPosition: CameraPosition(
-                  target: _navTarget?.coordinates ?? _fallbackCameraTarget,
-                  zoom: _isTurnByTurn ? _followCameraZoom : 16,
-                  tilt: _isTurnByTurn ? _followCameraTilt : 0,
+              _withMapGestureObserver(
+                GoogleMap(
+                  mapType: _mapType,
+                  // Initial framing is a placeholder only — whichever of
+                  // [_fitBirdsEyeBoundsOnce] / the turn-by-turn following
+                  // camera applies takes over as soon as a position is
+                  // available (from `onMapCreated` below, or from
+                  // `_initializeLocation` if GPS resolves first).
+                  initialCameraPosition: CameraPosition(
+                    target: _navTarget?.coordinates ?? _fallbackCameraTarget,
+                    zoom: _isTurnByTurn
+                        ? _followCameraZoom
+                        : _defaultRecenterZoom,
+                    tilt: _isTurnByTurn ? _followCameraTilt : 0,
+                  ),
+                  markers: _buildMarkers(),
+                  polylines: _buildRouteLine(),
+                  // See the browse-mode map above: hidden pre-activation so
+                  // the native dot can't contradict the gate-anchored
+                  // marker.
+                  myLocationEnabled:
+                      LiveTrackingActivationService.instance.isActive,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  mapToolbarEnabled: false,
+                  onCameraMoveStarted: _onCameraMoveStarted,
+                  onMapCreated: (c) {
+                    _mapController = c;
+                    _applyModeSpecificCamera();
+                  },
                 ),
-                markers: _buildMarkers(),
-                polylines: _buildRouteLine(),
-                myLocationEnabled: true,
-                myLocationButtonEnabled: false,
-                zoomControlsEnabled: false,
-                mapToolbarEnabled: false,
-                onMapCreated: (c) {
-                  _mapController = c;
-                  _applyModeSpecificCamera();
-                },
               ),
+              // Bottom-anchored floating stack: the satellite toggle sits
+              // directly above the compact trip-info card. Both live
+              // inside the map area, so when the Live Updates panel below
+              // expands or collapses, the map area resizes and this whole
+              // block rides up/down with it — animated for free by that
+              // panel's existing AnimatedSize, no separate animation
+              // needed. The bottom inset is the deliberate gap that keeps
+              // the card reading as its own floating element rather than
+              // looking fused to the panel, and it's what leaves the card
+              // still visible once the panel is collapsed.
               Positioned(
-                bottom: 14,
+                left: 20,
                 right: 20,
-                child: _MapLayerToggleButton(
-                  isSatelliteView: _mapType == MapType.satellite,
-                  onToggle: () => setState(() {
-                    _mapType = _mapType == MapType.satellite
-                        ? MapType.normal
-                        : MapType.satellite;
-                  }),
+                bottom: 14,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    // Re-center sits at the top of the stack (improvement-
+                    // batch spec Section 4.3: "above other floating
+                    // controls") and only once the user has panned away.
+                    if (_showRecenterButton) ...[
+                      _MapRecenterButton(
+                        colors: colors,
+                        onTap: _recenterOnUser,
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    _MapLayerToggleButton(
+                      isSatelliteView: _mapType == MapType.satellite,
+                      onToggle: () => setState(() {
+                        _mapType = _mapType == MapType.satellite
+                            ? MapType.normal
+                            : MapType.satellite;
+                      }),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildFloatingTripInfoCard(colors),
+                  ],
                 ),
               ),
               // Back button (addendum spec 2.1) — this screen has no
@@ -1602,34 +1917,13 @@ class _NavigationScreenState extends State<NavigationScreen> {
                 left: 20,
                 child: _MapBackButton(onTap: () => Navigator.maybePop(context)),
               ),
-              // Recenter button
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 64,
-                right: 17,
-                child: GestureDetector(
-                  onTap: _recenterOnRoute,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _isOffRoute ? colors.forest : colors.card,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.15),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.navigation_outlined,
-                      color: _isOffRoute ? Colors.white : colors.forest,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ),
+              // The re-center control used to live here, top-right and
+              // always visible, and it fired "return to route" (which also
+              // recalculated the route). Improvement-batch spec Section 4
+              // moved it into the bottom-right floating stack above and made
+              // it a pure, pan-triggered camera recenter; "return to route"
+              // now lives solely on the off-route nudge inside the trip-info
+              // card, where the recalculation is what the user is asking for.
               // Route-fallback indicator: whenever the real, street-
               // following ORS route couldn't be fetched (missing/invalid
               // key, network error, rate limit, no route found, etc.),
@@ -1670,17 +1964,6 @@ class _NavigationScreenState extends State<NavigationScreen> {
                   right: 68,
                   child: _buildTopManeuverCard(colors),
                 ),
-              // Turn-by-turn draggable directions panel (addendum spec
-              // Section 1) — deliberately absent in bird's-eye mode,
-              // which is meant to stay a clean overview map with just the
-              // route line (per user-confirmed decision: view mode
-              // controls this panel; the separate Accessibility/Live
-              // Updates panel below is orthogonal and shown/hidden purely
-              // by its own Settings toggle regardless of view mode). Now
-              // holds only the ETA/distance summary and target name — the
-              // maneuver card itself lives at the top of the screen
-              // instead (see above).
-              if (_isTurnByTurn) _buildTurnByTurnPanel(colors),
             ],
           ),
         ),
@@ -1846,150 +2129,120 @@ class _NavigationScreenState extends State<NavigationScreen> {
     );
   }
 
-  /// Collapsible/draggable live directions panel for turn-by-turn view
-  /// (addendum spec Section 1): swipe down to shrink it and reveal more
-  /// of the map, swipe back up to restore it — styled with this app's
-  /// existing card/shadow language rather than a new component. Carries
-  /// the ETA/distance summary and target name; the turn maneuver
-  /// icon/distance/street name live in the separate top-of-screen
-  /// maneuver card instead (see [_buildTopManeuverCard]).
-  Widget _buildTurnByTurnPanel(AppColors colors) {
-    return Positioned.fill(
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.3,
-        minChildSize: 0.09,
-        maxChildSize: 0.42,
-        snap: true,
-        snapSizes: const [0.09, 0.3, 0.42],
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: colors.paper,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 14,
-                  offset: const Offset(0, -3),
+  /// Compact floating trip-info card: destination name, distance, and ETA.
+  ///
+  /// Replaces the earlier `DraggableScrollableSheet` version, which claimed
+  /// 30-42% of the viewport to show ~70px of content and so left a large
+  /// blank area. This is a fixed-height card instead, anchored just above
+  /// the Live Updates panel with a gap between them, so the two read as
+  /// separate floating elements and the card stays visible when the panel
+  /// is collapsed.
+  ///
+  /// Shown in both bird's-eye and turn-by-turn view (improvement-batch
+  /// spec Section 8) — previously the name/ETA/distance appeared only in
+  /// turn-by-turn, leaving bird's-eye with no trip summary at all.
+  ///
+  /// The turn maneuver icon, next-turn distance, and current street name
+  /// remain in the separate top-of-screen maneuver card
+  /// ([_buildTopManeuverCard]); this card is only the trip summary.
+  Widget _buildFloatingTripInfoCard(AppColors colors) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: colors.card,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: widget.transportMode.routeColor.withValues(
+                    alpha: 0.16,
+                  ),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-              ],
-            ),
-            child: ListView(
-              controller: scrollController,
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-              children: [
-                Center(
-                  child: Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(
-                      color: colors.muted.withValues(alpha: 0.5),
-                      borderRadius: BorderRadius.circular(3),
-                    ),
+                child: Text(
+                  '${widget.transportMode.emoji} ${widget.transportMode.label}',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: widget.transportMode.routeColor,
                   ),
                 ),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 9,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: widget.transportMode.routeColor.withValues(
-                          alpha: 0.16,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+              ),
+              const Spacer(),
+              Text(
+                '${_calculateDistance()} · ETA ${_calculateEta()}',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: colors.muted,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _navTarget?.name ?? '',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: colors.ink,
+              height: 1.2,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          // Off-route nudge folded into this card as a third line rather
+          // than living in its own banner, keeping it visible without
+          // adding more floating chrome over the map.
+          if (_isOffRoute) ...[
+            const SizedBox(height: 9),
+            GestureDetector(
+              onTap: _recenterOnRoute,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  color: colors.forest,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(Icons.sync_rounded, size: 13, color: Colors.white),
+                    SizedBox(width: 6),
+                    Expanded(
                       child: Text(
-                        '${widget.transportMode.emoji} ${widget.transportMode.label}',
+                        'Off route — tap to recenter',
                         style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: widget.transportMode.routeColor,
+                          fontSize: 10.5,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      _calculateDistance(),
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: colors.muted,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'ETA ${_calculateEta()}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: colors.muted,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  _navTarget?.name ?? '',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: colors.ink,
-                  ),
-                ),
-                // The turn maneuver icon, next-turn distance, and current
-                // street/waypoint name have moved to the top-of-screen
-                // maneuver card (see [_buildTopManeuverCard]) — this sheet
-                // now only carries the ETA/distance summary and target
-                // name above, plus the off-route nudge below, matching
-                // the reference's split between a top maneuver card and
-                // a bottom ETA summary sheet.
-                if (_isOffRoute) ...[
-                  const SizedBox(height: 14),
-                  GestureDetector(
-                    onTap: _recenterOnRoute,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colors.forest,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.sync_rounded,
-                            size: 14,
-                            color: Colors.white,
-                          ),
-                          const SizedBox(width: 6),
-                          const Expanded(
-                            child: Text(
-                              'You\'ve strayed from the route — tap to recenter',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
-          );
-        },
+          ],
+        ],
       ),
     );
   }
@@ -2169,16 +2422,11 @@ class _NavigationScreenState extends State<NavigationScreen> {
                             }
                           },
                         ),
-                        _AccessibilityModeButton(
-                          colors: colors,
-                          icon: Icons.accessible_rounded,
-                          label: 'Ramps & Elevators',
-                          isActive: _rampsMode,
-                          onToggle: () => setState(() {
-                            _rampsMode = !_rampsMode;
-                            _rebuildLiveUpdates();
-                          }),
-                        ),
+                        // "Ramps & Elevators" is deliberately absent:
+                        // improvement-batch spec Section 5 folded step-free
+                        // access into "PWD & Senior Access" below, so ramp/
+                        // elevator-tagged locations surface through that
+                        // filter instead of needing their own toggle.
                         _AccessibilityModeButton(
                           colors: colors,
                           icon: Icons.chair_outlined,
@@ -2192,32 +2440,30 @@ class _NavigationScreenState extends State<NavigationScreen> {
                         _AccessibilityModeButton(
                           colors: colors,
                           icon: Icons.accessible_forward_rounded,
-                          label: 'PWD & Senior Priority Assistance',
+                          // Renamed from "PWD & Senior Priority Assistance":
+                          // now that ramps/elevators fold in here, the label
+                          // has to read as step-free *access*, not only
+                          // staff assistance.
+                          label: 'PWD & Senior Access',
                           isActive: _pwdSeniorPriorityMode,
                           onToggle: () => setState(() {
                             _pwdSeniorPriorityMode = !_pwdSeniorPriorityMode;
                             _rebuildLiveUpdates();
                           }),
                         ),
+                        // Replaces the removed "Audio-Described Directions"
+                        // mode (improvement-batch spec Section 5). Voice
+                        // output itself is unaffected — that still lives in
+                        // the "Braille / Voice" mode above.
                         _AccessibilityModeButton(
                           colors: colors,
-                          icon: Icons.record_voice_over_outlined,
-                          label: 'Audio-Described Directions',
-                          isActive: _audioDescribedDirectionsMode,
-                          onToggle: () {
-                            setState(() {
-                              _audioDescribedDirectionsMode =
-                                  !_audioDescribedDirectionsMode;
-                              _rebuildLiveUpdates();
-                            });
-                            if (_audioDescribedDirectionsMode) {
-                              _ttsService.speak(
-                                'Audio-described directions activated',
-                              );
-                            } else {
-                              _ttsService.stop();
-                            }
-                          },
+                          icon: Icons.terrain_outlined,
+                          label: 'Rough / Bumpy Road',
+                          isActive: _roughTerrainMode,
+                          onToggle: () => setState(() {
+                            _roughTerrainMode = !_roughTerrainMode;
+                            _rebuildLiveUpdates();
+                          }),
                         ),
                       ],
                     ),
@@ -2461,14 +2707,16 @@ class _NavFilterChipRow extends StatelessWidget {
       height: 34,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        // +1 for the trailing "Itineraries" entry point, kept in the same
+        // +1 for the leading "Itineraries" entry point, kept in the same
         // scrollable row as the category filter chips per design so it
         // reads as sitting alongside Fortifications/Landmarks/Schools/
-        // Parks rather than as a separate control below them.
+        // Parks rather than as a separate control below them. Placed
+        // first in the row (per updated order: Itineraries, then
+        // Fortifications/Landmarks/Schools/Parks).
         itemCount: categories.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
-          if (index == categories.length) {
+          if (index == 0) {
             return GestureDetector(
               onTap: onOpenItineraries,
               child: Container(
@@ -2478,25 +2726,18 @@ class _NavFilterChipRow extends StatelessWidget {
                   color: colors.forest,
                   borderRadius: BorderRadius.circular(25),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.explore_outlined, size: 14, color: Colors.white),
-                    SizedBox(width: 5),
-                    Text(
-                      'Itineraries',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+                child: const Text(
+                  'Itineraries',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             );
           }
-          final category = categories[index];
+          final category = categories[index - 1];
           final isActive = activeCategories.contains(category);
           return GestureDetector(
             onTap: () => onToggle(category),
@@ -2596,8 +2837,8 @@ class _LiveUpdateCard extends StatelessWidget {
         return Icons.chair_outlined;
       case AccessibilityType.pwdSeniorPriority:
         return Icons.accessible_forward_rounded;
-      case AccessibilityType.audioDescribedDirections:
-        return Icons.record_voice_over_outlined;
+      case AccessibilityType.roughTerrain:
+        return Icons.terrain_outlined;
       case AccessibilityType.cafe:
         // Same glyph as the Cafe button in Accessibility Modes (addendum
         // spec 3 Section 1.1/1.2), so the same feature reads identically
@@ -2669,6 +2910,54 @@ class _LiveUpdateCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Map Re-center Button ───────────────────────────────────────────────────
+// Appears in the bottom-right floating stack only once the user has panned
+// the map away from their location, and returns the camera to them while
+// resuming follow mode (improvement-batch spec Section 4.3/4.4/4.6).
+//
+// Kept circular rather than following the neighbouring pills' shape: it's the
+// conventional shape for this control on every major maps app, and the shape
+// difference makes it distinguishable at a glance from the satellite toggle
+// directly beneath it.
+
+class _MapRecenterButton extends StatelessWidget {
+  final AppColors colors;
+  final VoidCallback onTap;
+
+  const _MapRecenterButton({required this.colors, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'Re-center map on your location',
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: colors.card,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.15),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.my_location_rounded,
+            color: colors.forest,
+            size: 20,
+          ),
         ),
       ),
     );

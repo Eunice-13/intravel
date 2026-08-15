@@ -103,6 +103,245 @@ class ChatbotKnowledgeService {
         .toList();
   }
 
+  // ─── Structured / composable queries ────────────────────────────────────
+  // The improvement spec's acceptance criteria require answering budget
+  // ranges ("₱200–₱500") and *combined* filters (budget + category +
+  // accessibility) — neither of which was expressible before: price
+  // filtering was done ad hoc inside the conversation engine,
+  // [LocationModel.budgetRange] was never consulted, and
+  // accessibilityFeatures was never surfaced here at all. Everything
+  // below reads the same fields the Plans and location-detail screens
+  // read, so a chat answer can never disagree with what's on screen.
+
+  /// Locations whose realistic spend range overlaps `[min, max]`.
+  ///
+  /// Uses [LocationModel.budgetRange] — the "what you'd actually spend
+  /// here" figure the Plans page filters on — rather than
+  /// [TicketInfo.adultPrice], so a free-entry site with incidental costs
+  /// is still matched correctly. Overlap (not containment) matches the
+  /// Plans page's own [BudgetRange.overlaps] semantics.
+  List<LocationModel> locationsInBudgetRange({
+    double min = 0,
+    double max = double.infinity,
+  }) {
+    final effectiveMax = max.isFinite ? max : double.maxFinite;
+    final filter = BudgetRange(min: min, max: effectiveMax);
+    return allLocations.where((l) => l.budgetRange.overlaps(filter)).toList();
+  }
+
+  /// Locations with a formal adult admission fee at or below [maxPrice].
+  /// Distinct from [locationsInBudgetRange], which covers total spend.
+  List<LocationModel> locationsWithAdmissionUnder(double maxPrice) =>
+      allLocations.where((l) => l.ticketInfo.adultPrice <= maxPrice).toList();
+
+  /// Locations offering a student/senior discount, i.e. a student price
+  /// genuinely below the adult price.
+  List<LocationModel> get locationsWithDiscounts => allLocations
+      .where((l) => l.ticketInfo.studentPrice < l.ticketInfo.adultPrice)
+      .toList();
+
+  /// Locations exposing an accessibility feature of [type].
+  ///
+  /// Honours the improvement-batch spec Section 5 fold: asking for
+  /// [AccessibilityType.pwdSeniorPriority] also returns anything tagged
+  /// [AccessibilityType.ramps] or [AccessibilityType.elevators], since
+  /// step-free access is precisely what that filter now represents. Without
+  /// this, the chatbot and the UI toggle would disagree about which
+  /// locations qualify.
+  List<LocationModel> locationsWithAccessibility(AccessibilityType type) =>
+      allLocations
+          .where(
+            (l) => l.accessibilityFeatures.any((f) => _matches(f.type, type)),
+          )
+          .toList();
+
+  /// Whether a location's feature tag [tag] satisfies a request for [wanted].
+  static bool _matches(AccessibilityType tag, AccessibilityType wanted) {
+    if (tag == wanted) return true;
+    if (wanted == AccessibilityType.pwdSeniorPriority) {
+      return tag == AccessibilityType.ramps ||
+          tag == AccessibilityType.elevators;
+    }
+    return false;
+  }
+
+  /// Resolves free-text like "wheelchair", "ramp", "braille", "vegetarian"
+  /// to a real [AccessibilityType]. Returns `null` rather than guessing
+  /// when nothing matches, so an unsupported request declines honestly.
+  AccessibilityType? resolveAccessibilityType(String query) {
+    final q = _normalize(query);
+    if (q.isEmpty) return null;
+    const synonyms = <AccessibilityType, List<String>>{
+      // Step-free vocabulary resolves to pwdSeniorPriority rather than
+      // ramps/elevators: improvement-batch spec Section 5 folded those into
+      // that filter, so "is there wheelchair access" must match the same
+      // set the UI's "PWD & Senior Access" toggle shows. `ramps` and
+      // `elevators` remain valid data tags on locations — they just aren't
+      // separately addressable filters any more, and
+      // [locationsWithAccessibility] treats them as part of this group.
+      //
+      // Deliberately excludes bare 'senior' and 'pwd': those words show up
+      // constantly in *pricing* questions ("discounted student/senior
+      // rates"), and treating them as an accessibility filter hijacked such
+      // questions away from the discount handler.
+      AccessibilityType.pwdSeniorPriority: [
+        'ramp',
+        'ramps',
+        'elevator',
+        'elevators',
+        'lift',
+        'wheelchair',
+        'step free',
+        'stepfree',
+        'step-free',
+        'mobility',
+        'accessible entrance',
+        'priority lane',
+        'priority assistance',
+        'senior priority',
+        'pwd priority',
+        'pwd assistance',
+      ],
+      // Replaces the removed audio-described-directions mode.
+      AccessibilityType.roughTerrain: [
+        'rough',
+        'bumpy',
+        'uneven',
+        'cobble',
+        'cobblestone',
+        'terrain',
+        'rough road',
+        'bumpy road',
+      ],
+      AccessibilityType.brailleVoice: [
+        'braille',
+        'voice',
+        'audio',
+        'blind',
+        'visually impaired',
+      ],
+      AccessibilityType.vegetarian: ['vegetarian', 'vegan', 'meatless'],
+      AccessibilityType.restroom: ['restroom', 'toilet', 'washroom', 'cr'],
+      AccessibilityType.parking: ['parking', 'car park'],
+      AccessibilityType.restAreas: [
+        'rest area',
+        'rest areas',
+        'seating',
+        'bench',
+        'benches',
+        'somewhere to sit',
+        'place to sit',
+        'sit down',
+      ],
+
+      AccessibilityType.cafe: [
+        'cafe',
+        'coffee',
+        'wifi',
+        'socket',
+        'sockets',
+        'outlet',
+        'work from',
+        'laptop',
+      ],
+    };
+    for (final entry in synonyms.entries) {
+      for (final term in entry.value) {
+        if (q.contains(term)) return entry.key;
+      }
+    }
+    return null;
+  }
+
+  /// Locations currently open, per each site's own [OperatingHours].
+  List<LocationModel> get locationsOpenNow =>
+      allLocations.where((l) => l.isOpenNow).toList();
+
+  /// Locations flagged as cafes with workspace amenities.
+  List<LocationModel> locationsWithAmenities({
+    bool? requireWifi,
+    bool? requireSockets,
+  }) => allLocations.where((l) {
+    if (requireWifi == true && !l.hasWifi) return false;
+    if (requireSockets == true && !l.hasSockets) return false;
+    return true;
+  }).toList();
+
+  /// The one composable entry point the assistant should prefer: applies
+  /// every supplied constraint together (AND), so a question combining
+  /// budget + category + accessibility + open-now resolves in a single
+  /// grounded query instead of the caller intersecting lists by hand.
+  ///
+  /// Every parameter is optional; omitted ones simply don't constrain.
+  /// Returns an empty list when nothing matches — which the caller should
+  /// report honestly rather than widening the filters silently.
+  List<LocationModel> queryLocations({
+    String? category,
+    double? budgetMin,
+    double? budgetMax,
+    double? maxAdmission,
+    AccessibilityType? accessibility,
+    bool? openNow,
+    bool? requiresWifi,
+    bool? requiresSockets,
+    bool discountedOnly = false,
+  }) {
+    var results = allLocations;
+
+    if (category != null && category.trim().isNotEmpty) {
+      final resolved = resolveCategory(category);
+      if (resolved == null) return const [];
+      final normalized = _normalize(resolved);
+      results = results
+          .where((l) => _normalize(l.category) == normalized)
+          .toList();
+    }
+
+    if (budgetMin != null || budgetMax != null) {
+      final filter = BudgetRange(
+        min: budgetMin ?? 0,
+        max: budgetMax ?? double.maxFinite,
+      );
+      results = results.where((l) => l.budgetRange.overlaps(filter)).toList();
+    }
+
+    if (maxAdmission != null) {
+      results = results
+          .where((l) => l.ticketInfo.adultPrice <= maxAdmission)
+          .toList();
+    }
+
+    if (accessibility != null) {
+      results = results
+          .where(
+            (l) => l.accessibilityFeatures.any(
+              (f) => _matches(f.type, accessibility),
+            ),
+          )
+          .toList();
+    }
+
+    if (openNow == true) {
+      results = results.where((l) => l.isOpenNow).toList();
+    }
+
+    if (requiresWifi == true) {
+      results = results.where((l) => l.hasWifi).toList();
+    }
+
+    if (requiresSockets == true) {
+      results = results.where((l) => l.hasSockets).toList();
+    }
+
+    if (discountedOnly) {
+      results = results
+          .where((l) => l.ticketInfo.studentPrice < l.ticketInfo.adultPrice)
+          .toList();
+    }
+
+    return results;
+  }
+
   // ─── Gates ──────────────────────────────────────────────────────────────
 
   List<GateModel> get allGates => _gateService.getAllGates();
@@ -135,8 +374,7 @@ class ChatbotKnowledgeService {
 
   List<ItineraryModel> get userItineraries => _itineraryService.itineraries;
 
-  ItineraryModel? findItineraryById(String id) =>
-      _itineraryService.getById(id);
+  ItineraryModel? findItineraryById(String id) => _itineraryService.getById(id);
 
   List<LocationModel> resolveItineraryStops(ItineraryModel itinerary) =>
       _itineraryService.resolveLocations(itinerary);

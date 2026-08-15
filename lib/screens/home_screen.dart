@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../services/location_service.dart';
 import '../models/location_model.dart';
+import '../widgets/transport_access_section.dart';
 import 'location_details_screen.dart';
-import 'favorites_screen.dart';
 
 /// Home screen, ported from the Eunice-branch `#screen-home` markup:
 /// rounded search field, forest-green itinerary planner CTA, horizontally
 /// scrolling category chips, and a 2-column grid of photo cards.
+///
+/// Also hosts the Transport & Access module (relocated here from Settings
+/// per `intramuros-app-spec-updates-2.md` Section 2), sitting between the
+/// header block and the location list.
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onOpenPlans;
 
@@ -93,8 +97,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 12),
                     _PlannerButton(colors: colors, onTap: widget.onOpenPlans),
-                    const SizedBox(height: 9),
-                    _ViewSavedItinerariesButton(colors: colors),
                     const SizedBox(height: 16),
                     _CategoryChips(
                       colors: colors,
@@ -105,6 +107,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+            ),
+            // Transport & Access — its own distinct module below the
+            // header block (updates-2 spec Section 2 relocated this out of
+            // Settings; improvement-batch Section 3 set the 2-column grid).
+            // Deliberately sits outside the elevated header card so the
+            // category chips stay visually attached to the location grid
+            // they filter.
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(20, 18, 20, 0),
+              sliver: SliverToBoxAdapter(child: TransportAccessSection()),
             ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
@@ -253,48 +265,6 @@ class _PlannerButton extends StatelessWidget {
               size: 27,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── View Saved Itineraries Button ──────────────────────────────────────────
-// Smaller companion to the planner button, same width but noticeably
-// shorter/less tall — links straight to the Itinerary Hub tab of "Your
-// Hub" so saved itineraries aren't only reachable via Settings → Saved
-// Places.
-
-class _ViewSavedItinerariesButton extends StatelessWidget {
-  final AppColors colors;
-
-  const _ViewSavedItinerariesButton({required this.colors});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => const FavoritesScreen(initialTab: 'Itineraries'),
-          ),
-        );
-      },
-      child: Container(
-        height: 38,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: isDark ? colors.card : const Color(0xFFE1EEE5),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Text(
-          'View Saved Itineraries',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: isDark ? colors.ink : colors.forest,
-          ),
         ),
       ),
     );

@@ -28,12 +28,18 @@ class GateService {
           'https://upload.wikimedia.org/wikipedia/commons/1/13/Santa_Lucia_Gate%2C_Intramuros%2C_2018_%2801%29.jpg',
       coordinates: const LatLng(14.588417, 120.973500),
     ),
+    // Previously pointed at a wikimapia *page* URL (and over plain http),
+    // not an image file, so this gate silently rendered its blank fallback
+    // box everywhere it was shown. Replaced with a verified Wikimedia
+    // Commons image file: categorised under "Royal Gate (Puerta Real) of
+    // Intramuros", assessed as a quality image, by Diego Delso
+    // (CC BY-SA 4.0).
     GateModel(
       id: 'puerta-real',
       name: 'Puerta Real',
       kind: GateKind.historical,
       imageUrl:
-          'http://wikimapia.org/8334240/Revell%C3%ADn-de-Puerta-Real-de-Bagumbayan',
+          'https://upload.wikimedia.org/wikipedia/commons/a/a8/Puerta_Real%2C_Manila%2C_Filipinas%2C_2023-08-27%2C_DD_55.jpg',
       coordinates: const LatLng(14.587500, 120.974722),
     ),
 

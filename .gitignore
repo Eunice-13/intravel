@@ -47,6 +47,6 @@ app.*.map.json
 oracleJdk-26/
 
 # Local API keys/secrets loaded via --dart-define-from-file (see
-# env.example.json for the template committed instead). Never commit the
+# env.json.example for the template committed instead). Never commit the
 # real env.json.
 env.json

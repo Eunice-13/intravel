@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../models/chat_message_model.dart';
 import '../services/chat_memory_service.dart';
@@ -7,7 +9,7 @@ import '../services/chatbot_intent_service.dart' show ChatbotActionType;
 import '../services/chatbot_knowledge_service.dart';
 import '../services/gemini_chat_service.dart';
 import '../theme/app_theme.dart';
-import 'chatbot_tour_guide_logo.dart';
+import 'chatbot_avatar.dart';
 
 /// The IntraBadi assistant's chat window (chatbot spec Section 1): opens
 /// as an overlay/sheet on top of whatever page the user is on, without
@@ -81,16 +83,106 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
   /// place of the assistant's next bubble.
   bool _isWaitingForGeminiReply = false;
 
+  /// Which expression the header avatar is showing. Driven contextually:
+  /// waving on open, thinking while a reply is awaited, talking as a reply
+  /// is delivered, smiling just after, then back to idle.
+  ChatbotAvatarState _avatarState = ChatbotAvatarState.idle;
+
+  /// Pending avatar timers, tracked so they can be cancelled if the user
+  /// sends another message mid-animation (or the sheet closes) instead of
+  /// firing against a disposed State.
+  Timer? _avatarTimer;
+
+  /// Moves the avatar to [state], optionally returning to another state
+  /// after [holdFor]. Cancels any transition already queued.
+  void _setAvatarState(
+    ChatbotAvatarState state, {
+    Duration? holdFor,
+    ChatbotAvatarState then = ChatbotAvatarState.idle,
+    ({Duration after, ChatbotAvatarState state})? andThen,
+  }) {
+    _avatarTimer?.cancel();
+    if (!mounted) return;
+    setState(() => _avatarState = state);
+    if (holdFor == null) return;
+    _avatarTimer = Timer(holdFor, () {
+      if (!mounted) return;
+      setState(() => _avatarState = then);
+      if (andThen == null) return;
+      _avatarTimer = Timer(andThen.after, () {
+        if (!mounted) return;
+        setState(() => _avatarState = andThen.state);
+      });
+    });
+  }
+
+  /// How long to play the talking animation for a given reply.
+  ///
+  /// Replies arrive all at once rather than streaming token-by-token, so
+  /// there's no natural speech duration to follow. Scaling by word count
+  /// (~40ms/word) makes the mouth movement feel tied to the amount actually
+  /// being "said" — a fixed duration reads wrong for both "Yes." and a long
+  /// multi-item list. Clamped at both ends so very short replies still
+  /// register and very long ones don't chatter on for ages.
+  Duration _talkingDurationFor(String reply) {
+    final words = reply.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty);
+    final ms = (words.length * 40).clamp(400, 4000);
+    return Duration(milliseconds: ms);
+  }
+
+  /// True when the last turn was answered by the offline engine because
+  /// the live model was unavailable (no/invalid key, no network, model
+  /// error). Drives a small visible notice in the chat — the user-
+  /// confirmed requirement that this degradation is never silent.
+  bool _isDegradedToOffline = false;
+
+  /// Why the last turn fell back, so the banner can be specific.
+  _OfflineReasonKind _offlineReasonKind = _OfflineReasonKind.unknown;
+
+  static _OfflineReasonKind _classifyFallback(String? reason) {
+    final text = (reason ?? '').toLowerCase();
+    if (text.contains('exceeded your current quota') ||
+        text.contains('resource_exhausted') ||
+        text.contains('quota exceeded') ||
+        text.contains('billing details')) {
+      return _OfflineReasonKind.quota;
+    }
+    if (text.contains('no gemini api key') ||
+        text.contains('api key not valid') ||
+        text.contains('api_key_invalid')) {
+      return _OfflineReasonKind.apiKey;
+    }
+    if (text.contains('503') ||
+        text.contains('unavailable') ||
+        text.contains('high demand') ||
+        text.contains('overloaded')) {
+      return _OfflineReasonKind.capacity;
+    }
+    if (text.contains('socketexception') ||
+        text.contains('timeout') ||
+        text.contains('failed host lookup')) {
+      return _OfflineReasonKind.network;
+    }
+    return _OfflineReasonKind.unknown;
+  }
+
   @override
   void initState() {
     super.initState();
     _geminiService = widget.geminiService ?? GeminiChatService();
     _loadFuture = ChatMemoryService.instance.load();
     ChatMemoryService.instance.addListener(_onHistoryChanged);
+    // Greet on open, then settle into idle (spec Section 7's friendly
+    // tour-guide persona, expressed in the avatar rather than only in copy).
+    _setAvatarState(
+      ChatbotAvatarState.waving,
+      holdFor: const Duration(milliseconds: 1600),
+    );
   }
 
   @override
   void dispose() {
+    _avatarTimer?.cancel();
     ChatMemoryService.instance.removeListener(_onHistoryChanged);
     _inputController.dispose();
     _scrollController.dispose();
@@ -150,7 +242,8 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
       // silently dropping their new message or guessing at intent.
       await ChatMemoryService.instance.addMessage(
         role: ChatMessageRole.assistant,
-        text: 'Sorry, just need a Yes or No for that first — want me to '
+        text:
+            'Sorry, just need a Yes or No for that first — want me to '
             'go ahead?',
         pageContext: widget.currentPageContext,
       );
@@ -166,10 +259,29 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
       setState(() => _pendingAction = result.pendingAction);
     }
 
-    if (result.outcome != ChatbotEngineOutcome.answered) {
-      // Declined, action-pending, or action-unresolved: the engine's
-      // own text is authoritative and final for this turn — never
-      // handed to Gemini (see class doc).
+    // Which outcomes stay purely offline, and which fall through to the
+    // model, is deliberate:
+    //
+    //  * `declined` — the spec's scope guardrail (Section 2). Enforced in
+    //    code so an out-of-scope message is never sent to the model at
+    //    all, rather than trusting it to refuse.
+    //  * `actionPending` — a recognized state-changing request already
+    //    awaiting an explicit Yes/No (Section 4). Handing this to the
+    //    model would risk a second, conflicting interpretation while a
+    //    confirmation is outstanding.
+    //
+    // Everything else falls through. `actionUnresolved` and the engine's
+    // generic "I don't have that detail" answer used to be terminal, and
+    // that was the single biggest cause of the assistant looking
+    // keyword-bound: a question the regex layer simply failed to parse
+    // got a dead-end reply even though the data to answer it existed.
+    // Those are exactly the cases a model with the full dataset and
+    // conversation history should get a shot at.
+    final staysOffline =
+        result.outcome == ChatbotEngineOutcome.declined ||
+        result.outcome == ChatbotEngineOutcome.actionPending;
+
+    if (staysOffline) {
       await ChatMemoryService.instance.addMessage(
         role: ChatMessageRole.assistant,
         text: result.replyText,
@@ -178,35 +290,80 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
       return;
     }
 
-    // In-scope question: show the typing indicator and ask Gemini for a
-    // richer answer, falling back to the engine's own offline answer
-    // (already computed above, in result.replyText) if that fails.
+    // In-scope question (or an action the offline layer couldn't resolve):
+    // show the typing indicator and ask Gemini, falling back to the
+    // engine's own offline answer (already computed above, in
+    // result.replyText) if that fails.
     setState(() => _isWaitingForGeminiReply = true);
+    _setAvatarState(ChatbotAvatarState.thinking);
     _scrollToBottom();
 
     String? replyText;
+    var usedOfflineFallback = false;
+    String? fallbackReason;
     try {
       final geminiResult = await _geminiService.sendMessage(text);
       replyText = await _resolveGeminiResult(geminiResult);
-    } on GeminiChatException {
+    } on GeminiChatException catch (e) {
       replyText = result.replyText;
-    } catch (_) {
+      usedOfflineFallback = true;
+      fallbackReason = e.message;
+    } catch (e) {
       replyText = result.replyText;
+      usedOfflineFallback = true;
+      fallbackReason = e.toString();
     }
 
     if (!mounted) return;
-    setState(() => _isWaitingForGeminiReply = false);
+    setState(() {
+      _isWaitingForGeminiReply = false;
+      // Per the user-confirmed decision: the assistant runs on the model
+      // when a key is present and degrades to the offline engine when
+      // it isn't — but that degradation must be *visible*, not silent.
+      // Previously this fallback was swallowed entirely, so a
+      // misconfigured key or dead network produced a plausible-looking
+      // keyword reply with no indication the smarter path never ran.
+      _isDegradedToOffline = usedOfflineFallback;
+    });
+    if (usedOfflineFallback) {
+      debugPrint(
+        '[ChatbotChatSheet] Gemini unavailable — answered from the offline '
+        'engine instead. Reason: $fallbackReason',
+      );
+    }
+    // Classify the failure so the banner can say something actionable.
+    // A generic "check your connection or API key" actively misled during
+    // testing: the key and network were both fine and the real cause was
+    // the free tier's daily request cap.
+    if (mounted) {
+      setState(() => _offlineReasonKind = _classifyFallback(fallbackReason));
+    }
 
     // A null replyText means a function call was handled by putting up
     // a pending confirmation instead of a text reply (see
     // `_handleGeminiFunctionCalls`) — that confirmation message was
     // already appended there, so there's nothing further to add here.
-    if (replyText == null) return;
+    if (replyText == null) {
+      _setAvatarState(ChatbotAvatarState.idle);
+      return;
+    }
 
     await ChatMemoryService.instance.addMessage(
       role: ChatMessageRole.assistant,
       text: replyText,
       pageContext: widget.currentPageContext,
+    );
+
+    // "Speak" the reply for a duration proportional to its length, then a
+    // brief pleased beat, then back to resting.
+    _setAvatarState(
+      ChatbotAvatarState.talking,
+      holdFor: _talkingDurationFor(replyText),
+      then: ChatbotAvatarState.smiling,
+      andThen: const (
+        after: Duration(milliseconds: 1400),
+        state: ChatbotAvatarState.idle,
+      ),
     );
   }
 
@@ -251,8 +408,7 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
               'adultPrice': ticket.adultPrice,
               'studentPrice': ticket.studentPrice,
               if (ticket.childPrice != null) 'childPrice': ticket.childPrice,
-              if (ticket.seniorPrice != null)
-                'seniorPrice': ticket.seniorPrice,
+              if (ticket.seniorPrice != null) 'seniorPrice': ticket.seniorPrice,
               'currency': ticket.currency,
               if (ticket.notes != null) 'notes': ticket.notes,
             };
@@ -325,17 +481,30 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
     // reply (e.g. "Fort Santiago costs ₱75 for adults and ₱50 for
     // students.") from real app data, rather than this bridge code
     // templating the sentence itself.
-    final followUp = await _geminiService.sendFunctionResults(
-      functionResults,
-    );
+    final followUp = await _geminiService.sendFunctionResults(functionResults);
     return _resolveGeminiResult(followUp);
   }
 
   static const Set<String> _affirmativeReplies = {
-    'yes', 'y', 'yeah', 'yep', 'sure', 'ok', 'okay', 'oo', 'opo', 'sige',
+    'yes',
+    'y',
+    'yeah',
+    'yep',
+    'sure',
+    'ok',
+    'okay',
+    'oo',
+    'opo',
+    'sige',
   };
   static const Set<String> _negativeReplies = {
-    'no', 'n', 'nope', 'cancel', 'huwag', 'hindi', 'ayaw',
+    'no',
+    'n',
+    'nope',
+    'cancel',
+    'huwag',
+    'hindi',
+    'ayaw',
   };
 
   /// Calls [ChatbotActionExecutor] — the only place in this widget that
@@ -389,10 +558,7 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: colors.card,
-        title: Text(
-          'Clear chat history?',
-          style: TextStyle(color: colors.ink),
-        ),
+        title: Text('Clear chat history?', style: TextStyle(color: colors.ink)),
         content: Text(
           'This will permanently delete this entire conversation with '
           'IntraBadi. This cannot be undone.',
@@ -529,15 +695,22 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
           height: sheetHeight,
           decoration: BoxDecoration(
             color: colors.paper,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(26),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
           ),
           child: Column(
             children: [
               const _DragHandle(),
-              _ChatHeader(colors: colors, onClearHistory: _confirmClearHistory),
+              _ChatHeader(
+                colors: colors,
+                onClearHistory: _confirmClearHistory,
+                avatarState: _avatarState,
+              ),
               Divider(height: 1, color: colors.line),
+              // Visible degraded-mode notice (see [_isDegradedToOffline]) —
+              // the assistant must never quietly answer from the weaker
+              // offline path while appearing to be fully working.
+              if (_isDegradedToOffline)
+                _OfflineModeNotice(colors: colors, kind: _offlineReasonKind),
               Expanded(
                 child: FutureBuilder<void>(
                   future: _loadFuture,
@@ -642,7 +815,15 @@ class _ChatHeader extends StatelessWidget {
   final AppColors colors;
   final VoidCallback onClearHistory;
 
-  const _ChatHeader({required this.colors, required this.onClearHistory});
+  /// Current expression for the header avatar, driven by the sheet's
+  /// conversation state (see [_ChatbotAvatarState] triggers).
+  final ChatbotAvatarState avatarState;
+
+  const _ChatHeader({
+    required this.colors,
+    required this.onClearHistory,
+    required this.avatarState,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -650,11 +831,11 @@ class _ChatHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 8, 12, 14),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 19,
-            backgroundColor: colors.forest,
-            child: const ChatbotTourGuideLogo(size: 22),
-          ),
+          // Character only — no CircleAvatar/backing shape behind it, per
+          // the confirmed "transparent background, character only"
+          // requirement. Sized to the footprint the old circle occupied so
+          // the header layout is unchanged.
+          ChatbotAvatar(state: avatarState, size: 38),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -790,7 +971,8 @@ class _ConfirmationButton extends StatelessWidget {
 }
 
 /// Empty-state placeholder shown before any turns exist in the session.
-class _MessageArea extends StatelessWidget {  final AppColors colors;
+class _MessageArea extends StatelessWidget {
+  final AppColors colors;
 
   const _MessageArea({required this.colors});
 
@@ -820,6 +1002,74 @@ class _MessageArea extends StatelessWidget {  final AppColors colors;
     );
   }
 }
+
+/// Thin banner shown when the last reply came from the offline engine
+/// because the live model couldn't be reached (no/invalid `GEMINI_API_KEY`,
+/// no network, or a model error).
+///
+/// Exists because the fallback used to be completely silent: chat would
+/// answer from keyword matching and look identical to a full model reply,
+/// so a misconfigured key was invisible during testing. Styled with the
+/// app's existing warning treatment (same amber as the map-unavailable
+/// notice in `osm_poi_map_screen.dart`) rather than a new visual language.
+class _OfflineModeNotice extends StatelessWidget {
+  final AppColors colors;
+  final _OfflineReasonKind kind;
+
+  const _OfflineModeNotice({required this.colors, required this.kind});
+
+  /// Cause-specific copy. The original single message listed every possible
+  /// cause at once ("check your connection or GEMINI_API_KEY"), which
+  /// actively misled during testing: both were fine and the real cause was
+  /// the free tier's 20-requests-per-day cap.
+  String get _message {
+    switch (kind) {
+      case _OfflineReasonKind.quota:
+        return 'Daily AI quota reached — still answering from app data. '
+            'Resets tomorrow, or upgrade the Gemini plan for more.';
+      case _OfflineReasonKind.apiKey:
+        return 'AI key missing or rejected — answering from app data only. '
+            'Check GEMINI_API_KEY in env.json.';
+      case _OfflineReasonKind.capacity:
+        return 'AI service is busy right now — answering from app data. '
+            'Try again in a moment.';
+      case _OfflineReasonKind.network:
+        return 'No connection to the AI service — answering from app data '
+            'only.';
+      case _OfflineReasonKind.unknown:
+        return 'Offline mode — answering from app data only.';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      color: const Color(0xFFFFF3E0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.cloud_off_rounded,
+            size: 15,
+            color: Color(0xFFB25E00),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _message,
+              style: const TextStyle(fontSize: 11, color: Color(0xFF7A4200)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Why the assistant fell back to its offline engine, so the notice above
+/// can be specific about the cause rather than guessing.
+enum _OfflineReasonKind { quota, apiKey, capacity, network, unknown }
 
 /// Loading indicator shown as an assistant-side bubble while waiting on
 /// a live [GeminiChatService] reply — same left-aligned, neutral-card
@@ -946,11 +1196,7 @@ class _MessageBubble extends StatelessWidget {
         ),
         child: _MessageBubbleMarkdown(
           text: message.text,
-          baseStyle: TextStyle(
-            fontSize: 14,
-            height: 1.4,
-            color: textColor,
-          ),
+          baseStyle: TextStyle(fontSize: 14, height: 1.4, color: textColor),
         ),
       ),
     );
@@ -1002,9 +1248,7 @@ class _MessageBubbleMarkdown extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('•  ', style: baseStyle),
-            Expanded(
-              child: _richLine(content, baseStyle, boldStyle),
-            ),
+            Expanded(child: _richLine(content, baseStyle, boldStyle)),
           ],
         ),
       );
@@ -1018,9 +1262,7 @@ class _MessageBubbleMarkdown extends StatelessWidget {
     // unbroken paragraph with the literal "1." left inline, which is
     // what made such replies read as one run-on "essay" instead of a
     // real list.
-    final numberedMatch = RegExp(
-      r'^(\s*)(\d+)[.)]\s+(.*)$',
-    ).firstMatch(line);
+    final numberedMatch = RegExp(r'^(\s*)(\d+)[.)]\s+(.*)$').firstMatch(line);
     if (numberedMatch != null) {
       final number = numberedMatch.group(2) ?? '';
       final content = numberedMatch.group(3) ?? '';
@@ -1031,9 +1273,7 @@ class _MessageBubbleMarkdown extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('$number.  ', style: boldStyle),
-            Expanded(
-              child: _richLine(content, baseStyle, boldStyle),
-            ),
+            Expanded(child: _richLine(content, baseStyle, boldStyle)),
           ],
         ),
       );
@@ -1065,11 +1305,7 @@ class _MessageBubbleMarkdown extends StatelessWidget {
   /// tree alternating between [baseStyle] and [boldStyle] runs. Any
   /// unmatched/stray `**` (e.g. an odd count) is left as literal text
   /// rather than dropped, so malformed markdown never eats characters.
-  TextSpan _parseInline(
-    String line,
-    TextStyle baseStyle,
-    TextStyle boldStyle,
-  ) {
+  TextSpan _parseInline(String line, TextStyle baseStyle, TextStyle boldStyle) {
     final pattern = RegExp(r'\*\*(.+?)\*\*');
     final spans = <TextSpan>[];
     var cursor = 0;
@@ -1090,7 +1326,6 @@ class _MessageBubbleMarkdown extends StatelessWidget {
     return TextSpan(style: baseStyle, children: spans);
   }
 }
-
 
 /// Input bar (text field + send button), wired to append a user message
 /// to [ChatMemoryService] and trigger the conversation engine on send.

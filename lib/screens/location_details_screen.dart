@@ -6,8 +6,11 @@ import '../services/tts_service.dart';
 import '../services/location_service.dart';
 import '../services/saved_places_service.dart';
 import '../services/review_service.dart';
+import '../services/location_rating_service.dart';
+import '../services/chatbot_page_context_service.dart';
 import '../widgets/location_photo.dart';
 import '../widgets/nav_flow_launcher.dart';
+import 'itinerary_create_screen.dart';
 import 'review_form_screen.dart';
 
 /// Location details screen. Layout (hero + facts + history + highlights +
@@ -27,6 +30,21 @@ class LocationDetailsScreen extends StatefulWidget {
 class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
   final TtsService _ttsService = TtsService();
   bool get _isSaved => SavedPlacesService.instance.isSaved(widget.location.id);
+
+  @override
+  void initState() {
+    super.initState();
+    // Publish which location is on screen so the assistant can resolve
+    // "tell me more about this place" / "how much does it cost" without
+    // the user naming it (chatbot spec Section 6).
+    ChatbotPageContextService.instance.setCurrentLocation(widget.location.id);
+  }
+
+  @override
+  void dispose() {
+    ChatbotPageContextService.instance.clearCurrentLocation(widget.location.id);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -55,13 +73,28 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
   /// existing default (spec's intentional 4.8 placeholder for zero-review
   /// locations, computed in `LocationService._buildLocation`) when there
   /// are still no reviews at all — this only affects what's *displayed*
-  /// here; it does not change that default logic itself.
+  /// here; it does not change that default logic itself. Delegates the
+  /// actual merge/average to [computeLocationRatingSummary] so this
+  /// number matches whatever the Ratings list (Plans → Browse by Rating)
+  /// shows for the same location, rather than each screen computing its
+  /// own slightly different version.
   double get _displayedRating {
-    final reviews = _allReviews;
-    if (reviews.isEmpty) return widget.location.rating;
-    final average =
-        reviews.map((r) => r.rating).reduce((a, b) => a + b) / reviews.length;
-    return double.parse(average.toStringAsFixed(1));
+    final summary = computeLocationRatingSummary(widget.location);
+    return summary.hasRatings ? summary.average : widget.location.rating;
+  }
+
+  /// "Directions" (improvement-batch spec Section 7). Deliberately does not
+  /// launch inline turn-by-turn — that's what the separate Navigate CTA on
+  /// this screen is for, via [NavFlowLauncher]. Instead it opens the
+  /// itinerary builder with this location already included as a stop, so the
+  /// user plans a trip around it rather than getting a bare point-to-point
+  /// route.
+  void _openItineraryOptions() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ItineraryCreateScreen(seedLocation: widget.location),
+      ),
+    );
   }
 
   Future<void> _openReviewForm(
@@ -396,7 +429,7 @@ class _LocationDetailsScreenState extends State<LocationDetailsScreen> {
                           colors: colors,
                           icon: Icons.directions_outlined,
                           label: 'Directions',
-                          onTap: () {},
+                          onTap: _openItineraryOptions,
                         ),
                       ),
                     ],
