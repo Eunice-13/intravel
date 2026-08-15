@@ -141,10 +141,29 @@ class ChatbotKnowledgeService {
       .toList();
 
   /// Locations exposing an accessibility feature of [type].
+  ///
+  /// Honours the improvement-batch spec Section 5 fold: asking for
+  /// [AccessibilityType.pwdSeniorPriority] also returns anything tagged
+  /// [AccessibilityType.ramps] or [AccessibilityType.elevators], since
+  /// step-free access is precisely what that filter now represents. Without
+  /// this, the chatbot and the UI toggle would disagree about which
+  /// locations qualify.
   List<LocationModel> locationsWithAccessibility(AccessibilityType type) =>
       allLocations
-          .where((l) => l.accessibilityFeatures.any((f) => f.type == type))
+          .where(
+            (l) => l.accessibilityFeatures.any((f) => _matches(f.type, type)),
+          )
           .toList();
+
+  /// Whether a location's feature tag [tag] satisfies a request for [wanted].
+  static bool _matches(AccessibilityType tag, AccessibilityType wanted) {
+    if (tag == wanted) return true;
+    if (wanted == AccessibilityType.pwdSeniorPriority) {
+      return tag == AccessibilityType.ramps ||
+          tag == AccessibilityType.elevators;
+    }
+    return false;
+  }
 
   /// Resolves free-text like "wheelchair", "ramp", "braille", "vegetarian"
   /// to a real [AccessibilityType]. Returns `null` rather than guessing
@@ -153,22 +172,47 @@ class ChatbotKnowledgeService {
     final q = _normalize(query);
     if (q.isEmpty) return null;
     const synonyms = <AccessibilityType, List<String>>{
-      AccessibilityType.ramps: [
-        // Deliberately excludes bare 'senior' and 'pwd': those words show
-        // up constantly in *pricing* questions ("discounted
-        // student/senior rates"), and treating them as an accessibility
-        // filter hijacked such questions away from the discount handler.
-        // Priority-assistance phrasing lives under pwdSeniorPriority.
+      // Step-free vocabulary resolves to pwdSeniorPriority rather than
+      // ramps/elevators: improvement-batch spec Section 5 folded those into
+      // that filter, so "is there wheelchair access" must match the same
+      // set the UI's "PWD & Senior Access" toggle shows. `ramps` and
+      // `elevators` remain valid data tags on locations — they just aren't
+      // separately addressable filters any more, and
+      // [locationsWithAccessibility] treats them as part of this group.
+      //
+      // Deliberately excludes bare 'senior' and 'pwd': those words show up
+      // constantly in *pricing* questions ("discounted student/senior
+      // rates"), and treating them as an accessibility filter hijacked such
+      // questions away from the discount handler.
+      AccessibilityType.pwdSeniorPriority: [
         'ramp',
         'ramps',
+        'elevator',
+        'elevators',
+        'lift',
         'wheelchair',
         'step free',
         'stepfree',
         'step-free',
         'mobility',
         'accessible entrance',
+        'priority lane',
+        'priority assistance',
+        'senior priority',
+        'pwd priority',
+        'pwd assistance',
       ],
-      AccessibilityType.elevators: ['elevator', 'elevators', 'lift'],
+      // Replaces the removed audio-described-directions mode.
+      AccessibilityType.roughTerrain: [
+        'rough',
+        'bumpy',
+        'uneven',
+        'cobble',
+        'cobblestone',
+        'terrain',
+        'rough road',
+        'bumpy road',
+      ],
       AccessibilityType.brailleVoice: [
         'braille',
         'voice',
@@ -189,20 +233,7 @@ class ChatbotKnowledgeService {
         'place to sit',
         'sit down',
       ],
-      // Multi-word only, for the same reason as ramps above — a bare
-      // 'senior'/'pwd' would swallow senior-discount pricing questions.
-      AccessibilityType.pwdSeniorPriority: [
-        'priority lane',
-        'priority assistance',
-        'senior priority',
-        'pwd priority',
-        'pwd assistance',
-      ],
-      AccessibilityType.audioDescribedDirections: [
-        'audio described',
-        'audio description',
-        'narrated',
-      ],
+
       AccessibilityType.cafe: [
         'cafe',
         'coffee',
@@ -283,7 +314,9 @@ class ChatbotKnowledgeService {
     if (accessibility != null) {
       results = results
           .where(
-            (l) => l.accessibilityFeatures.any((f) => f.type == accessibility),
+            (l) => l.accessibilityFeatures.any(
+              (f) => _matches(f.type, accessibility),
+            ),
           )
           .toList();
     }

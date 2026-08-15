@@ -9,7 +9,9 @@ import 'package:intravel/widgets/chatbot_avatar.dart';
 void main() {
   Widget host(ChatbotAvatarState state, {double size = 38}) => MaterialApp(
     home: Scaffold(
-      body: Center(child: ChatbotAvatar(state: state, size: size)),
+      body: Center(
+        child: ChatbotAvatar(state: state, size: size),
+      ),
     ),
   );
 
@@ -54,8 +56,7 @@ void main() {
       expect(
         decorated,
         findsNothing,
-        reason:
-            'avatar should be a bare CustomPaint with no card/frame/circle',
+        reason: 'avatar should be a bare CustomPaint with no card/frame/circle',
       );
       expect(
         find.descendant(
@@ -110,52 +111,52 @@ void main() {
     ]) {
       await tester.pumpWidget(host(next));
       await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.takeException(), isNull, reason: 'switching to $next threw');
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'switching to $next threw',
+      );
     }
 
     expect(find.byType(ChatbotAvatar), findsOneWidget);
   });
 
-  testWidgets(
-    'holds a still pose when the platform asks for reduced motion',
-    (tester) async {
-      await tester.pumpWidget(
-        const MediaQuery(
-          data: MediaQueryData(disableAnimations: true),
-          child: MaterialApp(
-            home: Scaffold(
-              body: Center(
-                child: ChatbotAvatar(
-                  state: ChatbotAvatarState.talking,
-                  size: 38,
-                ),
-              ),
+  testWidgets('holds a still pose when the platform asks for reduced motion', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MediaQuery(
+        data: MediaQueryData(disableAnimations: true),
+        child: MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: ChatbotAvatar(state: ChatbotAvatarState.talking, size: 38),
             ),
           ),
         ),
-      );
-      await tester.pump();
+      ),
+    );
+    await tester.pump();
 
-      CustomPaint paintAt() => tester.widget<CustomPaint>(
-        find
-            .descendant(
-              of: find.byType(ChatbotAvatar),
-              matching: find.byType(CustomPaint),
-            )
-            .first,
-      );
+    CustomPaint paintAt() => tester.widget<CustomPaint>(
+      find
+          .descendant(
+            of: find.byType(ChatbotAvatar),
+            matching: find.byType(CustomPaint),
+          )
+          .first,
+    );
 
-      final first = paintAt().painter;
-      await tester.pump(const Duration(milliseconds: 300));
-      final second = paintAt().painter;
+    final first = paintAt().painter;
+    await tester.pump(const Duration(milliseconds: 300));
+    final second = paintAt().painter;
 
-      expect(
-        second!.shouldRepaint(first!),
-        isFalse,
-        reason:
-            'with reduced motion the pose is constant, so no repaint should '
-            'be requested',
-      );
-    },
-  );
+    expect(
+      second!.shouldRepaint(first!),
+      isFalse,
+      reason:
+          'with reduced motion the pose is constant, so no repaint should '
+          'be requested',
+    );
+  });
 }

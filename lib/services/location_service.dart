@@ -132,7 +132,10 @@ class LocationService {
       ],
       visitNote:
           'Entry conditions follow Fort Santiago visitor rules. Confirm current museum access before your visit.',
-      coordinates: const LatLng(14.5952, 120.9716),
+      // OSM way 27275508 "Rizal Shrine" (wikidata Q7339081), inside Fort
+      // Santiago: 14.59451, 120.96971. Previous value sat ~215m east, out
+      // by the fort's Almacenes side rather than at the shrine building.
+      coordinates: const LatLng(14.5945, 120.9697),
       relatedPlaceIds: [
         'fort-santiago',
         'plaza-de-armas',
@@ -158,7 +161,10 @@ class LocationService {
       ],
       visitNote:
           'Use designated paths and observe on-site safety guidance, especially after rain or during maintenance.',
-      coordinates: const LatLng(14.5958, 120.9722),
+      // OSM way 1359419593 "Esplanade - Fort Santiago": 14.59488,
+      // 120.97101. The previous value was north of the south bank, i.e.
+      // in the Pasig itself.
+      coordinates: const LatLng(14.5949, 120.9710),
       relatedPlaceIds: [
         'fort-santiago',
         'pasig-river-esplanade',
@@ -184,7 +190,10 @@ class LocationService {
       ],
       visitNote:
           'This is an outdoor public space. Check weather, closures, and local advisories before visiting.',
-      coordinates: const LatLng(14.5963, 120.9730),
+      // OSM way 1336921368 "Esplanade - Intramuros": 14.59502, 120.97623
+      // — the Intramuros-side stretch of the riverwalk. The previous value
+      // was in the middle of the Pasig.
+      coordinates: const LatLng(14.5950, 120.9762),
       relatedPlaceIds: [
         'fort-santiago-riverwalk',
         'fort-santiago',
@@ -210,7 +219,10 @@ class LocationService {
       ],
       visitNote:
           'Museum admission and opening schedules are managed on site; confirm the latest visitor information before travelling.',
-      coordinates: const LatLng(14.5896, 120.9740),
+      // OSM way 762415668 "Casa Manila" (wikidata Q2110598): 14.58966,
+      // 120.97517 — General Luna cor. Urdaneta, ~125m east of the
+      // previous value.
+      coordinates: const LatLng(14.5897, 120.9752),
       relatedPlaceIds: [
         'plaza-san-luis-complex',
         'san-agustin-church',
@@ -253,7 +265,8 @@ class LocationService {
       ],
       visitNote:
           "The exterior complex is walkable; access to individual museums and businesses follows their own schedules.",
-      coordinates: const LatLng(14.5893, 120.9738),
+      // OSM way 72518965 "Plaza San Luis Complex": 14.58966, 120.97544.
+      coordinates: const LatLng(14.5897, 120.9754),
       relatedPlaceIds: [
         'casa-manila-museum',
         'san-agustin-church',
@@ -279,7 +292,9 @@ class LocationService {
       ],
       visitNote:
           "Admission, tours, and gallery availability can change. Check the museum's current visitor guidance before visiting.",
-      coordinates: const LatLng(14.5907, 120.9737),
+      // OSM way 89184421 "Museo de Intramuros" (wikidata Q39054929),
+      // Arzobispo cor. Anda: 14.59894 → 14.58994, 120.97322.
+      coordinates: const LatLng(14.5899, 120.9732),
       relatedPlaceIds: [
         'centro-de-turismo-intramuros',
         'manila-cathedral',
@@ -320,7 +335,10 @@ class LocationService {
       ],
       visitNote:
           "Confirm current exhibits, programmes, and entry arrangements with the venue before visiting.",
-      coordinates: const LatLng(14.5908, 120.9735),
+      // The Centro occupies the old San Ignacio Church on Arzobispo St —
+      // OSM way 829052700 "San Ignacio Church" (wikidata Q18708321):
+      // 14.59004, 120.97313.
+      coordinates: const LatLng(14.5900, 120.9731),
       relatedPlaceIds: [
         'museo-de-intramuros',
         'manila-cathedral',
@@ -365,7 +383,9 @@ class LocationService {
       // (14°35'07"N 120°58'32"E) and a camera-geotagged Wikimedia Commons
       // photo of the site's own entrance/gardens (14°35'10"N 120°58'31"E)
       // -- the previous value was off by roughly 300m in longitude.
-      coordinates: const LatLng(14.5858, 120.9755),
+      // OSM way 331628854 "Baluarte de San Diego" (wikidata Q18708349):
+      // 14.58539, 120.97565.
+      coordinates: const LatLng(14.5854, 120.9756),
       relatedPlaceIds: [
         'baluarte-de-san-diego-gardens',
         'puerta-real-gardens',
@@ -413,7 +433,9 @@ class LocationService {
       // (same source: camera-geotagged Wikimedia Commons photo of the
       // gardens, 14°35'10"N 120°58'31"E) -- previous value was off by
       // roughly 300m in longitude.
-      coordinates: const LatLng(14.5861, 120.9753),
+      // OSM way 828352548 "Baluarte de San Diego Garden": 14.58589,
+      // 120.97569.
+      coordinates: const LatLng(14.5859, 120.9757),
       relatedPlaceIds: [
         'baluarte-de-san-diego',
         'puerta-real-gardens',
@@ -439,7 +461,9 @@ class LocationService {
       ],
       visitNote:
           'This is an active place of worship. Respect services and confirm visiting hours or photography rules before entering.',
-      coordinates: const LatLng(14.5916, 120.9733),
+      // OSM way 331777144 "Manila Cathedral" (wikidata Q773443):
+      // 14.59151, 120.97361.
+      coordinates: const LatLng(14.5915, 120.9736),
       relatedPlaceIds: [
         'plaza-roma',
         'ayuntamiento-de-manila',
@@ -480,7 +504,9 @@ class LocationService {
       ],
       visitNote:
           'This is an active church. Service times, museum access, and photography rules are set by the church and may change.',
-      coordinates: const LatLng(14.5888, 120.9748),
+      // OSM way 89571506 "San Agustin Church" (wikidata Q1306513):
+      // 14.58892, 120.97535.
+      coordinates: const LatLng(14.5889, 120.9753),
       relatedPlaceIds: [
         'san-agustin-museum',
         'casa-manila-museum',
@@ -521,7 +547,9 @@ class LocationService {
       ],
       visitNote:
           'Museum hours and admission are managed separately from worship services; confirm current information before arriving.',
-      coordinates: const LatLng(14.5886, 120.9750),
+      // OSM way 829243249 "San Agustin Museum": 14.58856, 120.97478 —
+      // the monastery wing, distinct from the church next door.
+      coordinates: const LatLng(14.5886, 120.9748),
       relatedPlaceIds: [
         'san-agustin-church',
         'casa-manila-museum',
@@ -554,7 +582,9 @@ class LocationService {
       ],
       visitNote:
           'Check current operating status and ticket information directly with the museum before making a special trip.',
-      coordinates: const LatLng(14.5919, 120.9759),
+      // OSM node 11729816009 "Museum of the Chinese in Philippine Life"
+      // (Bahay Tsinoy's full name), Cabildo St: 14.59090, 120.97504.
+      coordinates: const LatLng(14.5909, 120.9750),
       relatedPlaceIds: [
         'plaza-san-luis-complex',
         'manila-cathedral',
@@ -586,7 +616,11 @@ class LocationService {
       ],
       visitNote:
           'Tours, tastings, and age restrictions may apply. Confirm current terms directly with the museum.',
-      coordinates: const LatLng(14.5975, 120.9750),
+      // The museum's published address is 481 San Juan de Letran St,
+      // Intramuros; OSM way 217725326 puts that street at 14.59252,
+      // 120.97733. The previous value (14.5975) was on the far side of the
+      // Pasig River, in Binondo — outside Intramuros entirely.
+      coordinates: const LatLng(14.5925, 120.9773),
       relatedPlaceIds: [
         'plaza-san-luis-complex',
         'san-agustin-church',
@@ -618,7 +652,8 @@ class LocationService {
       ],
       visitNote:
           'A public open space best enjoyed on foot. Be mindful of ceremonies, traffic controls, and weather.',
-      coordinates: const LatLng(14.5917, 120.9731),
+      // OSM way 24159652 "Plaza de Roma": 14.59219, 120.97308.
+      coordinates: const LatLng(14.5922, 120.9731),
       relatedPlaceIds: [
         'manila-cathedral',
         'ayuntamiento-de-manila',
@@ -646,7 +681,9 @@ class LocationService {
           'This is primarily a government and historic exterior site; access beyond public areas is not assumed.',
       // Verified against OpenStreetMap's "Ayuntamiento de Manila (Casas
       // Consistoriales)" node: 14.5925078, 120.9733269.
-      coordinates: const LatLng(14.5925, 120.9733),
+      // OSM relation 2466078 "Ayuntamiento de Manila" (wikidata
+      // Q17063849): 14.59266, 120.97365.
+      coordinates: const LatLng(14.5927, 120.9736),
       relatedPlaceIds: [
         'plaza-roma',
         'manila-cathedral',
@@ -672,7 +709,9 @@ class LocationService {
       ],
       visitNote:
           'Treat this as an exterior landmark unless public access is explicitly announced.',
-      coordinates: const LatLng(14.5920, 120.9728),
+      // OSM relation 14885963 "Palacío del Gobernador" (wikidata
+      // Q23821145), General Luna cor. Andres Soriano: 14.59165, 120.97252.
+      coordinates: const LatLng(14.5917, 120.9725),
       relatedPlaceIds: [
         'plaza-roma',
         'ayuntamiento-de-manila',
@@ -698,7 +737,10 @@ class LocationService {
       ],
       visitNote:
           'Outdoor access can change for events, maintenance, or weather. Follow posted guidance.',
-      coordinates: const LatLng(14.5859, 120.9737),
+      // OSM way 828320209 "Puerta Réal Gardens": 14.58585, 120.97706. The
+      // previous longitude put it on the *western* seafront wall instead of
+      // at Puerta Real on the south wall — roughly 360m out.
+      coordinates: const LatLng(14.5859, 120.9771),
       relatedPlaceIds: [
         'baluarte-de-san-diego',
         'baluarte-de-san-diego-gardens',
@@ -724,7 +766,11 @@ class LocationService {
       ],
       visitNote:
           'This is an outdoor memorial space; check local conditions and respect any event setup.',
-      coordinates: const LatLng(14.5945, 120.9757),
+      // OSM way 331628858 "ASEAN Garden" (alt_name "Revellin del Parian
+      // Garden"): 14.59302, 120.97804. The site's own note already said
+      // "Gardens at Revellin del Parian", which is on the *eastern* wall —
+      // the previous value was up by the northern wall instead.
+      coordinates: const LatLng(14.5930, 120.9780),
     ),
     _RawSite(
       id: 'galleria-de-los-presidentes',
@@ -745,7 +791,14 @@ class LocationService {
       ],
       visitNote:
           'Open-air access is generally the focus; observe any posted site restrictions.',
-      coordinates: const LatLng(14.5877, 120.9714),
+      // Not mapped in OSM and no published coordinate found, so this is a
+      // deliberate approximation rather than a verified fix: placed on the
+      // wall walk just inside Puerta Real, beside Puerta Real Gardens (OSM
+      // way 828320209, 14.58585/120.97706), which is the stretch the
+      // Intramuros Administration's presidential bas-relief gallery runs
+      // along. The previous value was clearly wrong — well west of the
+      // walls, out in the reclaimed land by Bonifacio Drive.
+      coordinates: const LatLng(14.5864, 120.9762),
     ),
     _RawSite(
       id: 'plaza-de-armas',
@@ -766,7 +819,9 @@ class LocationService {
       ],
       visitNote:
           'Fort Santiago admission and operating rules apply to this location.',
-      coordinates: const LatLng(14.5950, 120.9719),
+      // OSM way 331784448 "Plaza de Armas" (wikidata Q14146227), inside
+      // Fort Santiago: 14.59454, 120.97009.
+      coordinates: const LatLng(14.5945, 120.9701),
       relatedPlaceIds: ['fort-santiago', 'museo-ni-rizal'],
     ),
     _RawSite(
@@ -788,7 +843,9 @@ class LocationService {
       ],
       visitNote:
           'This is an exterior public space. Exercise normal care around vehicles and pedestrian crossings.',
-      coordinates: const LatLng(14.5940, 120.9723),
+      // OSM way 85932692 "Plaza Moriones" (wikidata Q89995646):
+      // 14.59327, 120.97110.
+      coordinates: const LatLng(14.5933, 120.9711),
       relatedPlaceIds: ['fort-santiago', 'fort-santiago-riverwalk'],
     ),
     _RawSite(
@@ -814,7 +871,9 @@ class LocationService {
       // for Baluarte de Santa Barbara, which places it inside Fort
       // Santiago itself (14° 35.702' N, 120° 58.177' E) rather than the
       // previous coordinate, which was roughly 350m away.
-      coordinates: const LatLng(14.5950, 120.9696),
+      // OSM way 828670515 "Baluarte de Santa Barbara": 14.59504,
+      // 120.96934.
+      coordinates: const LatLng(14.5950, 120.9693),
       relatedPlaceIds: ['fort-santiago'],
     ),
     _RawSite(
@@ -837,7 +896,9 @@ class LocationService {
       ],
       visitNote:
           'This is an active private school campus, not a public tourist attraction — access is generally limited to students, staff, and visitors with official business.',
-      coordinates: const LatLng(14.593500, 120.977556),
+      // OSM relation 14033842 "Colegio de San Juan de Letran" (wikidata
+      // Q1108074), Muralla St: 14.59323, 120.97655.
+      coordinates: const LatLng(14.5932, 120.9766),
       relatedPlaceIds: ['baluarte-de-santa-barbara', 'fort-santiago'],
     ),
     _RawSite(
@@ -860,7 +921,9 @@ class LocationService {
       ],
       visitNote:
           'This is an active university campus. General visitors should expect the same access restrictions as any operating school.',
-      coordinates: const LatLng(14.590833, 120.977778),
+      // OSM way 27790819 "Mapúa University" (wikidata Q3268248), 658
+      // Muralla St: 14.59050, 120.97809.
+      coordinates: const LatLng(14.5905, 120.9781),
       relatedPlaceIds: ['colegio-de-san-juan-de-letran'],
     ),
     _RawSite(
@@ -883,7 +946,9 @@ class LocationService {
       ],
       visitNote:
           'This is an active public university campus within the walls; general tourist access is limited to the exterior and grounds.',
-      coordinates: const LatLng(14.587000, 120.976000),
+      // OSM way 27275574 "Pamantasan ng Lungsod ng Maynila" (wikidata
+      // Q2032807), General Luna cor. Muralla: 14.58686, 120.97644.
+      coordinates: const LatLng(14.5869, 120.9764),
       relatedPlaceIds: ['colegio-de-san-juan-de-letran', 'plaza-roma'],
     ),
     _RawSite(
@@ -934,7 +999,15 @@ class LocationService {
       ],
       visitNote:
           'This is a heritage exterior. Observe posted barriers and stay on authorised paths.',
-      coordinates: const LatLng(14.5886, 120.9730),
+      // Not individually mapped in OSM. Placed on the southwestern curtain
+      // wall between its two documented neighbours — Puerta de Santa Lucia
+      // (OSM way 331675588, 14.58850/120.97372) to the north and
+      // Baluartillo de San Jose (OSM way 331675589, 14.58675/120.97469) to
+      // the south — which is where the Intramuros Administration's
+      // Seafront Complex places it. Approximate to within a few tens of
+      // metres, but on the wall line rather than the previous value, which
+      // fell outside the walls in the reclaimed land to the west.
+      coordinates: const LatLng(14.5878, 120.9741),
       relatedPlaceIds: [
         'baluartillo-de-san-jose',
         'reducto-de-san-pedro',
@@ -961,7 +1034,10 @@ class LocationService {
       ],
       visitNote:
           'Exterior access only. Respect barriers and conservation work in the area.',
-      coordinates: const LatLng(14.5882, 120.9724),
+      // OSM way 331675589 "Baluartillo de San Jose", Victoria St:
+      // 14.58675, 120.97469. The previous value fell outside the walls, in
+      // the reclaimed land west of the seafront wall.
+      coordinates: const LatLng(14.5867, 120.9747),
       relatedPlaceIds: [
         'baluarillo-de-san-juan',
         'reducto-de-san-pedro',
@@ -988,7 +1064,9 @@ class LocationService {
       ],
       visitNote:
           'This is a heritage ruin. Do not climb or enter unsafe structures; observe from designated paths.',
-      coordinates: const LatLng(14.5873, 120.9733),
+      // OSM way 89572174 "Reducto de San Pedro" (defensive_works=redoubt):
+      // 14.58654, 120.97436. Previous value was outside the walls.
+      coordinates: const LatLng(14.5865, 120.9744),
       relatedPlaceIds: [
         'baluarillo-de-san-juan',
         'baluartillo-de-san-jose',
@@ -1042,7 +1120,9 @@ class LocationService {
       ],
       visitNote:
           'Free exterior access. Located near Colegio de San Juan de Letran on the northern wall.',
-      coordinates: const LatLng(14.5939, 120.9764),
+      // OSM node 10243714050 "Puerta de Isabel II" (operator: Intramuros
+      // Administration): 14.59415, 120.97625.
+      coordinates: const LatLng(14.5941, 120.9763),
       relatedPlaceIds: [
         'colegio-de-san-juan-de-letran',
         'fort-santiago',
@@ -1120,7 +1200,10 @@ class LocationService {
       ],
       visitNote:
           'Free admission. Check current exhibit schedule with the NCCA before visiting.',
-      coordinates: const LatLng(14.5908, 120.9742),
+      // OSM way 421439722 "National Commission for Culture and the Arts",
+      // whose building at 633 General Luna St houses the gallery:
+      // 14.58829, 120.97593.
+      coordinates: const LatLng(14.5883, 120.9759),
       relatedPlaceIds: [
         'palacio-del-gobernador',
         'ayuntamiento-de-manila',
@@ -1146,7 +1229,9 @@ class LocationService {
       ],
       visitNote:
           'Approximately PHP 150 per person for guided tour. Confirm schedule and availability.',
-      coordinates: const LatLng(14.5878, 120.9750),
+      // OSM way 828366030 "Bagumbayan Light and Sound Museum", Santa Lucia
+      // St: 14.58662, 120.97535.
+      coordinates: const LatLng(14.5866, 120.9754),
       relatedPlaceIds: [
         'fort-santiago',
         'galleria-de-los-presidentes',
@@ -1172,7 +1257,12 @@ class LocationService {
       ],
       visitNote:
           'Free exterior viewing. The site is primarily a historic landmark.',
-      coordinates: const LatLng(14.5917, 120.9755),
+      // OSM node 7454084487 / way 34363634 "Chamber of Commerce of the
+      // Philippine Islands": 14.59467, 120.97616. This genuinely sits on
+      // the riverside strip just outside the northern wall, between Muralla
+      // Street and the Pasig — still Intramuros district, not inside the
+      // wall line.
+      coordinates: const LatLng(14.5947, 120.9762),
       relatedPlaceIds: [
         'ayuntamiento-de-manila',
         'plaza-roma',
@@ -1198,7 +1288,10 @@ class LocationService {
       ],
       visitNote:
           'Free exterior viewing. Interior access is not guaranteed; confirm before visiting.',
-      coordinates: const LatLng(14.5935, 120.9748),
+      // OSM way 89184408 "National Archives of the Philippines", the
+      // adaptive reuse of the Aduana/Intendencia building on Magallanes
+      // Drive: 14.59400, 120.97460.
+      coordinates: const LatLng(14.5940, 120.9746),
       relatedPlaceIds: [
         'plaza-espana',
         'ayuntamiento-de-manila',
@@ -1250,7 +1343,9 @@ class LocationService {
       ],
       visitNote:
           'Free public open space. Open at all times; be mindful of surrounding traffic.',
-      coordinates: const LatLng(14.5933, 120.9750),
+      // OSM way 59293274 "Plaza España" (wikidata Q25221977): 14.59358,
+      // 120.97454.
+      coordinates: const LatLng(14.5936, 120.9745),
       relatedPlaceIds: [
         'aduana-intendencia',
         'puerta-isabel-ii',
@@ -1279,7 +1374,10 @@ class LocationService {
       // Verified against a camera-geotagged Wikimedia Commons photo taken
       // at Manila High School (14°35'21"N 120°58'27"E) -- previous value
       // was off by roughly 300m.
-      coordinates: const LatLng(14.5892, 120.9742),
+      // OSM way 83591315 "Manila High School" (wikidata Q25211962),
+      // Muralla cor. Victoria: 14.58902, 120.97842. The previous value was
+      // ~455m west, over by San Agustin instead of on the eastern wall.
+      coordinates: const LatLng(14.5890, 120.9784),
       relatedPlaceIds: [
         'colegio-de-san-juan-de-letran',
         'puerta-isabel-ii',
@@ -1305,7 +1403,9 @@ class LocationService {
       ],
       visitNote:
           'University campus. Visitor access to campus grounds may require coordination.',
-      coordinates: const LatLng(14.5899, 120.9785),
+      // OSM relation 8602738 "Lyceum of the Philippines University"
+      // (wikidata Q3547527): 14.59154, 120.97783.
+      coordinates: const LatLng(14.5915, 120.9778),
       relatedPlaceIds: [
         'mapua-university-intramuros',
         'pamantasan-ng-lungsod-ng-maynila',
@@ -1388,6 +1488,261 @@ class LocationService {
       relatedPlaceIds: ['fort-santiago', 'museo-ni-rizal'],
       hasWifi: true,
       hasSockets: true,
+    ),
+
+    // ─── Locations dataset completion (improvement-batch spec Section 6) ─────
+    // The eight entries below close the gap between this catalogue and
+    // `docs/intramuros-app-spec-locations.md`, which lists 12 Fortifications
+    // and 8 Parks where this file previously had 9 and 11 (the Parks surplus
+    // is gardens/promenades the doc doesn't enumerate, which are kept).
+    //
+    // Every coordinate here is taken from OpenStreetMap (ODbL) rather than
+    // estimated, with the source element cited inline. Two of the eight have
+    // no OSM element and no published coordinate; those say so explicitly and
+    // explain how their position was derived from mapped neighbours, rather
+    // than presenting a guess as verified.
+    //
+    // Photos: none of these eight has a dedicated image in `assets/`, so each
+    // either points at a real, checked Wikimedia Commons/Intramuros
+    // Administration file or reuses the nearest existing in-repo photo of the
+    // same wall section. Flagged per entry so it's obvious which are stand-ins
+    // awaiting a proper photo.
+    _RawSite(
+      id: 'baluarte-plano-luneta-de-santa-isabel',
+      budgetRange: const BudgetRange(min: 150, max: 400),
+      name: 'Baluarte Plano Luneta de Santa Isabel',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Flat bastion on Santa Lucia Street; now a food hall',
+      access: 'Free to enter, pay per order at the food stalls',
+      // Stand-in photo: nearest bastion on the same seafront wall.
+      photo: 'assets/intravel/assets/home/baluarte-de-san-diego.jpg',
+      area: 'Santa Lucia Street, western wall',
+      history:
+          'Named after St Elizabeth, this "plano" or flat bastion sits on the western wall near Puerta de Santa Lucia. Unlike the pointed ace-of-spades bastions elsewhere on the walls, its platform is level, which is what the name records. In recent years the Intramuros Administration has leased the grounds for public events, including the Department of Tourism\'s Philippine Eatsperience food village, so visitors today usually find it in use as a dining and events space rather than as a bare ruin.',
+      highlights: [
+        'Level "plano" bastion platform, unusual among the walls',
+        'Adaptive reuse as an events and dining venue',
+        'Steps from Puerta de Santa Lucia on the western wall',
+      ],
+      visitNote:
+          'What is open here depends on which event or concessionaire is running the grounds, so opening hours and prices shift. Check the Intramuros Administration listings before travelling.',
+      // OSM way 331675587 "Baluarte Plano de Sta. Isabela"
+      // (defensive_works=bastion): 14.58950, 120.97292.
+      coordinates: const LatLng(14.5895, 120.9729),
+      relatedPlaceIds: [
+        'baluarillo-de-san-juan',
+        'baluartillo-de-san-eugenio',
+        'museo-de-intramuros',
+      ],
+    ),
+    _RawSite(
+      id: 'baluartillo-de-san-eugenio',
+      budgetRange: const BudgetRange(min: 15, max: 40),
+      name: 'Baluartillo de San Eugenio',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Small bastion and archaeological site on the western wall',
+      access: 'Free',
+      // Stand-in photo: nearest bastion on the same seafront wall.
+      photo: 'assets/intravel/assets/home/baluarte-de-san-diego.jpg',
+      area: 'Western wall, between Santa Isabel and Santa Lucia',
+      history:
+          'A "baluartillo" is a small bastion, and this one — named after St Eugene — is one of the minor works punctuating the western wall between Baluarte Plano de Santa Isabel and Puerta de Santa Lucia. Much of it survives as an archaeological site rather than a standing structure, so what is visible is excavated stonework and foundations rather than a restored bastion.',
+      highlights: [
+        'Archaeological site rather than a restored structure',
+        'One of the minor works on the western seafront wall',
+        'Excavated Spanish-era foundations and stonework',
+      ],
+      visitNote:
+          'An active archaeological area. Stay on the marked paths, do not climb the excavated stonework, and expect parts to be fenced off during conservation work.',
+      // Not mapped in OSM and no published coordinate found, so this is a
+      // derived position rather than a verified one: placed on the western
+      // curtain wall between the two mapped works the Intramuros
+      // Administration's own fortifications list puts it between — Baluarte
+      // Plano de Santa Isabel (OSM way 331675587, 14.58950/120.97292) and
+      // Puerta de Santa Lucia (OSM way 331675588, 14.58850/120.97372).
+      coordinates: const LatLng(14.5890, 120.9733),
+      relatedPlaceIds: [
+        'baluarte-plano-luneta-de-santa-isabel',
+        'baluarillo-de-san-juan',
+        'reducto-de-san-pedro',
+      ],
+    ),
+    _RawSite(
+      id: 'baluarte-de-san-andres',
+      budgetRange: const BudgetRange(min: 15, max: 40),
+      name: 'Baluarte de San Andres',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Bastion guarding the southeastern corner of the walls',
+      access: 'Free',
+      photo:
+          'https://intramuros.gov.ph/wp-content/uploads/2022/09/San-Andres-2-1024x559.png',
+      area: 'Muralla Street, southeastern wall',
+      history:
+          'Built in 1603 to cover Puerta Real and the southeastern corner of Intramuros, this bastion is named after St Andrew, who was proclaimed patron of Manila after the city withstood the Chinese corsair Limahong\'s attack in 1574. It anchors the angle where the southern wall turns north toward the Parian side.',
+      highlights: [
+        'Built in 1603 to protect Puerta Real',
+        'Named for St Andrew, patron of Manila after the 1574 attack',
+        'Anchors the southeastern angle of the walls',
+      ],
+      visitNote:
+          'Heritage exterior on a busy stretch of Muralla Street. Watch for traffic on the approach and observe any posted barriers.',
+      // OSM way 331628853 "Baluarte De San Andres" (wikidata Q48817289,
+      // defensive_works=bastion), Muralla Street: 14.58707, 120.97863.
+      coordinates: const LatLng(14.5871, 120.9786),
+      relatedPlaceIds: [
+        'revellin-de-puerta-real-de-bagumbayan',
+        'revellin-de-recoletos',
+        'manila-high-school',
+      ],
+    ),
+    _RawSite(
+      id: 'revellin-de-recoletos',
+      budgetRange: const BudgetRange(min: 15, max: 40),
+      name: 'Revellin de Recoletos',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Outer defence beside the old Recollect church; now Escuela Taller',
+      access: 'Free exterior; interior access depends on the school',
+      photo:
+          'https://commons.wikimedia.org/wiki/Special:FilePath/03679jfIntramuros%20Gates%20Baluarte%20Recoletos%20Schools%20Streets%20Landmarksfvf%2037.jpg?width=800',
+      area: 'Victoria Street, eastern wall',
+      history:
+          'A ravelin — a detached, wedge-shaped outwork sited in front of the wall — built to shield the gate beside the church and convent of the Augustinian Recollects. The structure now houses Escuela Taller de Filipinas, a school that trains young Filipinos in traditional building trades and uses the fortification itself as a working conservation classroom.',
+      highlights: [
+        'Ravelin outwork protecting the Recollects\' gate',
+        'Home of Escuela Taller\'s heritage-conservation trade school',
+        'Restored stonework used for hands-on craft training',
+      ],
+      visitNote:
+          'The grounds are a working school. The exterior can be viewed freely, but visiting inside generally needs to be arranged with Escuela Taller in advance.',
+      // OSM relation 2406221 "Revellín de Recoletos", Muralla Street:
+      // 14.58859, 120.97951.
+      coordinates: const LatLng(14.5886, 120.9795),
+      relatedPlaceIds: [
+        'baluarte-de-san-andres',
+        'baluarte-de-dilao',
+        'manila-high-school',
+      ],
+    ),
+    _RawSite(
+      id: 'baluarte-de-dilao',
+      budgetRange: const BudgetRange(min: 15, max: 40),
+      name: 'Baluarte de Dilao',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Eastern-wall bastion facing the old Japanese quarter',
+      access: 'Free',
+      // Stand-in photo: adjacent structure on the same eastern wall.
+      photo: 'assets/intravel/assets/home/puerta-del-parian.jpg',
+      area: 'Muralla Street, eastern wall',
+      history:
+          'Fully Baluarte de San Francisco de Dilao, this bastion took its second name from Dilao, the Japanese enclave that stood east of the walls before its residents were resettled to Paco in the 1760s. The San Francisco part honours St Francis of Assisi, whose Franciscan churches — Our Lady of the Angels and the Venerable Orden Tercera — stood nearby inside the city.',
+      highlights: [
+        'Named for Dilao, the Japanese quarter east of the walls',
+        'Also honours the Franciscan churches that stood nearby',
+        'Restored bastion on the Muralla Street wall walk',
+      ],
+      visitNote:
+          'One of the more accessible bastions on this stretch — OpenStreetMap records step-free access here — but conditions on the wall walk still vary, so check on arrival.',
+      // OSM way 331628855 "Baluarte de San Francisco de Dilao"
+      // (defensive_works=bastion, wheelchair=yes): 14.59039, 120.97910.
+      coordinates: const LatLng(14.5904, 120.9791),
+      relatedPlaceIds: [
+        'revellin-de-recoletos',
+        'puerta-del-parian-revellin-del-parian',
+        'mapua-university-intramuros',
+      ],
+    ),
+    _RawSite(
+      id: 'baluarte-de-san-gabriel',
+      budgetRange: const BudgetRange(min: 15, max: 40),
+      name: 'Baluarte de San Gabriel',
+      category: 'Fortifications',
+      type: 'Fortification',
+      note: 'Northern-wall bastion overlooking the Pasig',
+      access: 'Free',
+      // Stand-in photo: adjacent gate on the same northern wall.
+      photo: 'assets/intravel/assets/home/puerta-isabel-ii.jpg',
+      area: 'Anda Street, northern wall',
+      history:
+          'Named after the Archangel Gabriel, this bastion covers the northeastern turn of the walls where the eastern front meets the Pasig River frontage, a short walk from Puerta Isabel II. Its guns commanded the river approach and the wharves that made this the city\'s commercial edge.',
+      highlights: [
+        'Guards the northeastern turn of the walls',
+        'Commands the Pasig River approach and old wharf side',
+        'A short walk from Puerta Isabel II',
+      ],
+      visitNote:
+          'Exterior viewing along Anda and Muralla streets. The riverside side of the wall is busier with traffic, so keep to the footpaths.',
+      // OSM way 331628857 "Baluarte de San Gabriel"
+      // (defensive_works=bastion), Anda Street: 14.59397, 120.97739.
+      coordinates: const LatLng(14.5940, 120.9774),
+      relatedPlaceIds: [
+        'puerta-isabel-ii',
+        'plaza-mexico',
+        'colegio-de-san-juan-de-letran',
+      ],
+    ),
+    _RawSite(
+      id: 'plazuela-de-santa-isabel',
+      budgetRange: const BudgetRange(min: 15, max: 50),
+      name: 'Plazuela de Santa Isabel',
+      category: 'Parks',
+      type: 'Pocket plaza',
+      note: 'Small plaza holding the Memorare Manila 1945 monument',
+      access: 'Free',
+      // Stand-in photo: comparable pocket plaza inside the walls.
+      photo: 'assets/intravel/assets/home/plaza-de-santo-tomas.jpg',
+      area: 'General Luna corner Anda Street',
+      history:
+          'A small triangular plaza at the General Luna and Anda street corner, named for the Santa Isabel college that once stood in this quarter. It is best known now for Memorare Manila 1945, the marble monument unveiled in 1995 to the more than one hundred thousand civilians killed during the Battle of Manila, whose inscription is addressed to the "innocent victims" of that month of fighting.',
+      highlights: [
+        'Memorare Manila 1945 civilian-casualty monument',
+        'Quiet shaded stop between Museo de Intramuros and Casa Manila',
+        'Named for the old Santa Isabel college quarter',
+      ],
+      visitNote:
+          'A memorial space as much as a plaza — it is a common site for wreath-laying every February, so expect ceremonies around the anniversary of the battle.',
+      // OSM way 72518968 "Plazuela de Santa Isabel" (leisure=park):
+      // 14.59047, 120.97446.
+      coordinates: const LatLng(14.5905, 120.9745),
+      relatedPlaceIds: [
+        'museo-de-intramuros',
+        'casa-manila-museum',
+        'centro-de-turismo-intramuros',
+      ],
+    ),
+    _RawSite(
+      id: 'plaza-mexico',
+      budgetRange: const BudgetRange(min: 15, max: 50),
+      name: 'Plaza Mexico',
+      category: 'Parks',
+      type: 'Riverside plaza',
+      note: 'Riverside square marking the Manila-Acapulco galleon trade',
+      access: 'Free',
+      // Stand-in photo: the adjoining Pasig riverside walk.
+      photo: 'assets/intravel/assets/home/ia-pasig-esplanade.jpg',
+      area: 'West end of Magallanes Drive, Pasig riverside',
+      history:
+          'A riverside square at the west end of Magallanes Drive, facing the Pasig on its northern side. It commemorates the two and a half centuries of the Manila-Acapulco galleon trade, which tied Intramuros directly to New Spain: the plaza and its counterpart Plaza Manila in Mexico City were dedicated as paired monuments to that shared history.',
+      highlights: [
+        'Commemorates the Manila-Acapulco galleon trade',
+        'Paired with Plaza Manila in Mexico City',
+        'Opens directly onto the Pasig River frontage',
+      ],
+      visitNote:
+          'Open riverside space with little shade — best in the late afternoon. It connects to the Pasig River Esplanade walk along the same bank.',
+      // OSM relation 18378284 "Plaza Mexico" (leisure=park): 14.59463,
+      // 120.97470. Sits on the riverside strip north of the wall line, which
+      // is where the real plaza is — still inside Intramuros district.
+      coordinates: const LatLng(14.5946, 120.9747),
+      relatedPlaceIds: [
+        'pasig-river-esplanade',
+        'puerta-isabel-ii',
+        'aduana-intendencia',
+      ],
     ),
   ];
 
