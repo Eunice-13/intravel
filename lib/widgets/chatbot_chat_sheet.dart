@@ -7,7 +7,9 @@ import '../services/chatbot_action_executor.dart';
 import '../services/chatbot_conversation_engine.dart';
 import '../services/chatbot_intent_service.dart' show ChatbotActionType;
 import '../services/chatbot_knowledge_service.dart';
+import '../services/chat_provider_config.dart';
 import '../services/gemini_chat_service.dart';
+import '../services/gemini_service_adapter.dart';
 import '../theme/app_theme.dart';
 import 'chatbot_avatar.dart';
 
@@ -141,15 +143,15 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
 
   static _OfflineReasonKind _classifyFallback(String? reason) {
     final text = (reason ?? '').toLowerCase();
-    if (text.contains('exceeded your current quota') ||
-        text.contains('resource_exhausted') ||
-        text.contains('quota exceeded') ||
-        text.contains('billing details')) {
+    if (text.contains('429') ||
+        text.contains('rate limit') ||
+        text.contains('too many requests') ||
+        text.contains('quota exceeded')) {
       return _OfflineReasonKind.quota;
     }
-    if (text.contains('no gemini api key') ||
-        text.contains('api key not valid') ||
-        text.contains('api_key_invalid')) {
+    if (text.contains('no backboard api key') ||
+        text.contains('invalid or missing api key') ||
+        text.contains('401')) {
       return _OfflineReasonKind.apiKey;
     }
     if (text.contains('503') ||
@@ -169,8 +171,7 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
   @override
   void initState() {
     super.initState();
-    _geminiService = widget.geminiService ?? GeminiChatService();
-    _loadFuture = ChatMemoryService.instance.load();
+    _loadFuture = _initialize();
     ChatMemoryService.instance.addListener(_onHistoryChanged);
     // Greet on open, then settle into idle (spec Section 7's friendly
     // tour-guide persona, expressed in the avatar rather than only in copy).
@@ -193,6 +194,38 @@ class _ChatbotChatSheetState extends State<ChatbotChatSheet> {
     if (!mounted) return;
     setState(() {});
     _scrollToBottom();
+  }
+
+  /// Resolves the active chat backend (see `chat_provider_config.dart`
+  /// — `CHAT_PROVIDER`, defaulting to Backboard) and loads persisted
+  /// chat history concurrently, then constructs [_geminiService]
+  /// accordingly. Folded into the same future the `FutureBuilder` in
+  /// [build] already gates the whole message list/input bar behind, so
+  /// this doesn't need a second, separate loading state — nothing that
+  /// touches [_geminiService] can run before this future completes.
+  ///
+  /// **Provider selection happens exactly once per widget construction**
+  /// (i.e. once per chat-sheet open) and is never re-evaluated for the
+  /// lifetime of this widget — switching `CHAT_PROVIDER` only ever takes
+  /// effect on a fresh app restart, since Backboard's server-side thread
+  /// history and the native-Gemini path's local-transcript-replay
+  /// history are not compatible with each other; switching mid-
+  /// conversation would silently drop context either way.
+  Future<void> _initialize() async {
+    if (widget.geminiService != null) {
+      // Test/preview injection path — the caller already decided which
+      // backend (real or fake) to use, so provider resolution is
+      // skipped entirely.
+      _geminiService = widget.geminiService!;
+    } else {
+      final provider = await ChatProviderConfig().resolve();
+      debugPrint('[ChatbotChatSheet] Active chat provider: ${provider.name}');
+      _geminiService = switch (provider) {
+        ChatProvider.backboard => GeminiChatService(),
+        ChatProvider.gemini => GeminiServiceAdapter(),
+      };
+    }
+    await ChatMemoryService.instance.load();
   }
 
   void _scrollToBottom() {
@@ -1026,10 +1059,10 @@ class _OfflineModeNotice extends StatelessWidget {
     switch (kind) {
       case _OfflineReasonKind.quota:
         return 'Daily AI quota reached — still answering from app data. '
-            'Resets tomorrow, or upgrade the Gemini plan for more.';
+            'Resets tomorrow, or upgrade the Backboard plan for more.';
       case _OfflineReasonKind.apiKey:
         return 'AI key missing or rejected — answering from app data only. '
-            'Check GEMINI_API_KEY in env.json.';
+            'Check BACKBOARD_API_KEY in env.json.';
       case _OfflineReasonKind.capacity:
         return 'AI service is busy right now — answering from app data. '
             'Try again in a moment.';
