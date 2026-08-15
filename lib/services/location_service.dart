@@ -254,7 +254,7 @@ class LocationService {
       type: 'Heritage complex',
       note: 'Historic streetscape beside Casa Manila',
       access: 'Free exterior',
-      photo: 'assets/intravel/assets/home/casa-manila.jpg',
+      photo: 'assets/intravel/assets/home/plaza-san-luis-complex.jpg',
       area: 'General Luna Street',
       history:
           'Plaza San Luis is a heritage complex beside Casa Manila. Its reconstructed houses evoke the residential streetscape of old Intramuros.',
@@ -808,7 +808,7 @@ class LocationService {
       type: 'Historic plaza',
       note: 'Open space inside Fort Santiago',
       access: 'Fort entry',
-      photo: 'assets/intravel/assets/home/fort-santiago.jpg',
+      photo: 'assets/intravel/assets/home/plaza-de-armas.jpg',
       area: 'Inside Fort Santiago',
       history:
           "Plaza de Armas is the central open space within Fort Santiago, historically associated with the citadel's military layout and now part of the visitor route.",
@@ -832,7 +832,7 @@ class LocationService {
       type: 'Open space',
       note: 'Historic public plaza',
       access: 'Free exterior',
-      photo: 'assets/intravel/assets/home/plaza-roma.jpg',
+      photo: 'assets/intravel/assets/home/plaza-moriones.jpg',
       area: 'Northern Intramuros',
       history:
           'Plaza Moriones is a historic plaza near Fort Santiago in the northern part of Intramuros.',
@@ -987,8 +987,12 @@ class LocationService {
       type: 'Fortification',
       note: 'Small bastion on the seafront wall',
       access: 'Free',
+      // Stand-in photo: no dedicated photo of this specific minor bastion
+      // was found; using a real, distinct Aduana-area Intramuros landmark
+      // photo instead of the remote San-Andres image (which is also reused
+      // by Baluartillo de San Jose and Baluarte de San Andres below).
       photo:
-          'https://intramuros.gov.ph/wp-content/uploads/2022/09/San-Andres-2-1024x559.png',
+          'assets/intravel/assets/home/intramuros-aduana-area-fallback.jpg',
       area: 'Seafront Complex, southwestern wall',
       history:
           "Baluarillo de San Juan is a small bastion on the southwestern seafront wall of Intramuros, part of the Seafront Complex that defended the city's coastal edge.",
@@ -1022,8 +1026,11 @@ class LocationService {
       type: 'Fortification',
       note: 'Small defensive work on the seafront',
       access: 'Free',
-      photo:
-          'https://intramuros.gov.ph/wp-content/uploads/2022/09/San-Andres-2-1024x559.png',
+      // Stand-in photo: no dedicated photo of this specific minor bastion
+      // was found; using a real, distinct Puerta Real/Muralla streetscape
+      // photo instead of the remote San-Andres image (also reused by
+      // Baluarillo de San Juan above and Baluarte de San Andres below).
+      photo: 'assets/intravel/assets/home/puerta-real-muralla-fallback.jpg',
       area: 'Seafront Complex, southwestern wall',
       history:
           'Baluartillo de San Jose is a small defensive work within the Seafront Complex of Intramuros, forming part of the interconnected coastal fortifications south of the walled city.',
@@ -1137,7 +1144,10 @@ class LocationService {
       type: 'Cultural venue',
       note: 'Event venue for performances and conferences',
       access: 'Event-dependent',
-      photo: 'assets/intravel/assets/home/palacio.jpg',
+      // Stand-in photo: no dedicated photo of this specific venue was
+      // found; using a real, distinct general Intramuros walls photo
+      // rather than a duplicate of Palacio del Gobernador's photo.
+      photo: 'assets/intravel/assets/home/walls-of-intramuros-fallback.jpg',
       area: 'Central Intramuros',
       history:
           'Foro de Intramuros is a cultural event venue within the walled city that hosts performances, conferences, and community events celebrating Philippine heritage.',
@@ -1218,7 +1228,12 @@ class LocationService {
       type: 'Museum',
       note: 'Immersive audio-visual history experience',
       access: 'Guided tour',
-      photo: 'assets/intravel/assets/home/fort-santiago.jpg',
+      // Stand-in photo: no freely-licensed photo of this specific museum
+      // was found (only paid stock photography exists); using a real,
+      // distinct Muralla/General Luna corner photo rather than a
+      // duplicate.
+      photo:
+          'assets/intravel/assets/home/intramuros-dole-muralla-fallback.jpg',
       area: 'Victoria Street corner Santa Lucia Street',
       history:
           "The Intramuros and Rizal's Bagumbayan Light and Sound Museum brings Philippine history and the life of Jose Rizal to life through guided audio-visual presentations, narrated journeys, and immersive light shows.",
@@ -1332,7 +1347,7 @@ class LocationService {
       type: 'Public square',
       note: 'Triangular plaza with Philip II monument',
       access: 'Free',
-      photo: 'assets/intravel/assets/home/plaza-roma.jpg',
+      photo: 'assets/intravel/assets/home/plaza-espana.jpg',
       area: 'Soriano Avenue corner Solana and Muralla Streets',
       history:
           'Plaza de España is a triangular public square in Intramuros formed by the intersection of Andres Soriano Avenue, Solana Street, and Muralla Street. It features a monument to King Philip II of Spain, after whom the Philippines was named.',
@@ -1425,7 +1440,7 @@ class LocationService {
       type: 'Cafe',
       note: 'Colonial-style cafe with WiFi and workspace seating',
       access: 'Free entry, pay per order',
-      photo: 'assets/intravel/assets/home/plaza-roma.jpg',
+      photo: 'assets/intravel/assets/home/barbara-s-cafe.jpg',
       area: 'Plaza San Luis Complex, Intramuros',
       history:
           'A colonial-themed cafe within the Plaza San Luis Complex, popular with visitors and remote workers alike for its garden seating and reliable WiFi.',
@@ -1449,7 +1464,11 @@ class LocationService {
       type: 'Cafe',
       note: 'Cozy cafe along the old city walls, WiFi available',
       access: 'Free entry, pay per order',
-      photo: 'assets/intravel/assets/home/plaza-roma.jpg',
+      // Stand-in photo: "Cafe de Muralla" has no findable public presence
+      // (likely placeholder/demo data, not a verified real business); using
+      // a real, distinct Muralla Street-area heritage photo instead of a
+      // duplicate of another place's photo.
+      photo: 'assets/intravel/assets/home/baluarte-san-andres-fallback.jpg',
       area: 'Muralla Street, Intramuros',
       history:
           'A small cafe tucked along Muralla Street, near the old city walls, serving coffee and light meals to tourists and students from nearby schools.',
@@ -1473,7 +1492,11 @@ class LocationService {
       type: 'Cafe',
       note: 'Coffee shop near Fort Santiago with laptop-friendly seating',
       access: 'Free entry, pay per order',
-      photo: 'assets/intravel/assets/home/fort-santiago.jpg',
+      // Stand-in photo: "Fort Brew Coffee" has no findable public presence
+      // (likely placeholder/demo data, not a verified real business); using
+      // a real, distinct Fort Santiago gate-area photo instead of a
+      // duplicate of another place's photo.
+      photo: 'assets/intravel/assets/home/intramuros-fort-gate-fallback.jpg',
       area: 'Near Fort Santiago, Intramuros',
       history:
           'A modern coffee shop just outside Fort Santiago, catering to tourists and remote workers with dedicated workspace seating.',
@@ -1515,8 +1538,11 @@ class LocationService {
       type: 'Fortification',
       note: 'Flat bastion on Santa Lucia Street; now a food hall',
       access: 'Free to enter, pay per order at the food stalls',
-      // Stand-in photo: nearest bastion on the same seafront wall.
-      photo: 'assets/intravel/assets/home/baluarte-de-san-diego.jpg',
+      // Stand-in photo: no freely-licensed photo of this specific bastion
+      // was found; using a real, distinct General Luna streetscape photo
+      // rather than a duplicate of Foro de Intramuros' fallback.
+      photo:
+          'assets/intravel/assets/home/intramuros-general-luna-fallback.jpg',
       area: 'Santa Lucia Street, western wall',
       history:
           'Named after St Elizabeth, this "plano" or flat bastion sits on the western wall near Puerta de Santa Lucia. Unlike the pointed ace-of-spades bastions elsewhere on the walls, its platform is level, which is what the name records. In recent years the Intramuros Administration has leased the grounds for public events, including the Department of Tourism\'s Philippine Eatsperience food village, so visitors today usually find it in use as a dining and events space rather than as a bare ruin.',
@@ -1544,8 +1570,12 @@ class LocationService {
       type: 'Fortification',
       note: 'Small bastion and archaeological site on the western wall',
       access: 'Free',
-      // Stand-in photo: nearest bastion on the same seafront wall.
-      photo: 'assets/intravel/assets/home/baluarte-de-san-diego.jpg',
+      // Stand-in photo: this is an excavated archaeological site with no
+      // standing structure and no dedicated photo exists anywhere found;
+      // using a real, distinct Intramuros fortification photo rather than
+      // a duplicate of Baluarte de San Diego's own photo.
+      photo:
+          'assets/intravel/assets/home/baluarte-san-diego-gardens-fallback.jpg',
       area: 'Western wall, between Santa Isabel and Santa Lucia',
       history:
           'A "baluartillo" is a small bastion, and this one — named after St Eugene — is one of the minor works punctuating the western wall between Baluarte Plano de Santa Isabel and Puerta de Santa Lucia. Much of it survives as an archaeological site rather than a standing structure, so what is visible is excavated stonework and foundations rather than a restored bastion.',
@@ -1635,8 +1665,14 @@ class LocationService {
       type: 'Fortification',
       note: 'Eastern-wall bastion facing the old Japanese quarter',
       access: 'Free',
-      // Stand-in photo: adjacent structure on the same eastern wall.
-      photo: 'assets/intravel/assets/home/puerta-del-parian.jpg',
+      // Stand-in photo: the previous candidate file (Puerta del Parian's
+      // own photo) was a duplicate; the only Commons file naming this
+      // bastion turned out to primarily depict a different nearby site
+      // (Revellin de Recoletos) rather than Baluarte de Dilao itself, so no
+      // verifiably accurate photo was found. Using a real, distinct
+      // Muralla/Palacio streetscape photo instead.
+      photo:
+          'assets/intravel/assets/home/puerta-real-palacio-corner-fallback.jpg',
       area: 'Muralla Street, eastern wall',
       history:
           'Fully Baluarte de San Francisco de Dilao, this bastion took its second name from Dilao, the Japanese enclave that stood east of the walls before its residents were resettled to Paco in the 1760s. The San Francisco part honours St Francis of Assisi, whose Franciscan churches — Our Lady of the Angels and the Venerable Orden Tercera — stood nearby inside the city.',
@@ -1664,8 +1700,12 @@ class LocationService {
       type: 'Fortification',
       note: 'Northern-wall bastion overlooking the Pasig',
       access: 'Free',
-      // Stand-in photo: adjacent gate on the same northern wall.
-      photo: 'assets/intravel/assets/home/puerta-isabel-ii.jpg',
+      // Stand-in photo: no dedicated photo of this specific bastion was
+      // found; using a real, distinct historic Puerta de Santa Lucia gate
+      // photo rather than a duplicate of Baluarillo de San Juan's
+      // fallback.
+      photo:
+          'assets/intravel/assets/home/puerta-santa-lucia-historic-fallback.jpg',
       area: 'Anda Street, northern wall',
       history:
           'Named after the Archangel Gabriel, this bastion covers the northeastern turn of the walls where the eastern front meets the Pasig River frontage, a short walk from Puerta Isabel II. Its guns commanded the river approach and the wharves that made this the city\'s commercial edge.',
@@ -1693,8 +1733,7 @@ class LocationService {
       type: 'Pocket plaza',
       note: 'Small plaza holding the Memorare Manila 1945 monument',
       access: 'Free',
-      // Stand-in photo: comparable pocket plaza inside the walls.
-      photo: 'assets/intravel/assets/home/plaza-de-santo-tomas.jpg',
+      photo: 'assets/intravel/assets/home/plazuela-de-santa-isabel.jpg',
       area: 'General Luna corner Anda Street',
       history:
           'A small triangular plaza at the General Luna and Anda street corner, named for the Santa Isabel college that once stood in this quarter. It is best known now for Memorare Manila 1945, the marble monument unveiled in 1995 to the more than one hundred thousand civilians killed during the Battle of Manila, whose inscription is addressed to the "innocent victims" of that month of fighting.',
@@ -1722,8 +1761,7 @@ class LocationService {
       type: 'Riverside plaza',
       note: 'Riverside square marking the Manila-Acapulco galleon trade',
       access: 'Free',
-      // Stand-in photo: the adjoining Pasig riverside walk.
-      photo: 'assets/intravel/assets/home/ia-pasig-esplanade.jpg',
+      photo: 'assets/intravel/assets/home/plaza-mexico.jpg',
       area: 'West end of Magallanes Drive, Pasig riverside',
       history:
           'A riverside square at the west end of Magallanes Drive, facing the Pasig on its northern side. It commemorates the two and a half centuries of the Manila-Acapulco galleon trade, which tied Intramuros directly to New Spain: the plaza and its counterpart Plaza Manila in Mexico City were dedicated as paired monuments to that shared history.',
